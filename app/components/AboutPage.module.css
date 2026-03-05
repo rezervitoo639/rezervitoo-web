@@ -1,0 +1,128 @@
+.aboutPage {
+    padding-top: 72px;
+}
+
+.pageHeader {
+    background: var(--gradient-blue);
+    color: white;
+    padding: var(--spacing-3xl) 0;
+    text-align: center;
+}
+
+.pageHeader h1 {
+    color: white;
+    margin-bottom: var(--spacing-md);
+}
+
+.pageHeader p {
+    font-size: 1.25rem;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.storyText {
+    font-size: 1.25rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 0;
+}
+
+.valuesSection {
+    background: var(--background-secondary);
+}
+
+.valuesGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--spacing-2xl);
+}
+
+.valueCard {
+    background: var(--surface);
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-lg);
+    border: 2px solid transparent;
+    transition: all var(--transition-base);
+}
+
+.valueCard:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-2xl);
+}
+
+.cardMission {
+    border-color: var(--primary-blue);
+}
+
+.cardVision {
+    border-color: var(--accent-purple);
+}
+
+.valueIcon {
+    width: 72px;
+    height: 72px;
+    background: var(--primary-blue-lighter);
+    border-radius: var(--radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-blue);
+    margin-bottom: var(--spacing-lg);
+}
+
+[data-theme="dark"] .valueIcon {
+    background: rgba(24, 119, 242, 0.15);
+}
+
+.cardVision .valueIcon {
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--accent-purple);
+}
+
+.valueCard h3 {
+    font-size: 1.75rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.valueCard p {
+    font-size: 1.125rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.coreValues {
+    background: var(--background);
+}
+
+.sectionTitle {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: var(--spacing-3xl);
+}
+
+.coreValueIcon {
+    width: 64px;
+    height: 64px;
+    background: var(--primary-blue-lighter);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-blue);
+    margin-bottom: var(--spacing-lg);
+}
+
+[data-theme="dark"] .coreValueIcon {
+    background: rgba(24, 119, 242, 0.15);
+}
+
+@media (max-width: 768px) {
+    .valuesGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .storyText {
+        font-size: 1.125rem;
+    }
+}

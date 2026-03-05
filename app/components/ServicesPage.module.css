@@ -1,0 +1,244 @@
+.servicesPage {
+    padding-top: 72px;
+}
+
+.pageHeader {
+    background: var(--gradient-blue);
+    color: white;
+    padding: var(--spacing-3xl) 0;
+    text-align: center;
+}
+
+.pageHeader h1 {
+    color: white;
+    margin-bottom: var(--spacing-md);
+    font-size: 3rem;
+}
+
+.pageHeader p {
+    font-size: 1.25rem;
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.detailedGrid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3xl);
+}
+
+.detailCard {
+    background: var(--surface);
+    border-radius: var(--radius-2xl);
+    padding: var(--spacing-2xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-light);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+    transition: all var(--transition-base);
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.detailCard::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 2px;
+    border-radius: var(--radius-2xl);
+    background: linear-gradient(135deg, transparent 0%, transparent 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    transition: all var(--transition-base);
+    z-index: -1;
+}
+
+[data-theme="dark"] .detailCard {
+    background: rgba(30, 31, 32, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.detailCard:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-2xl);
+    border-color: transparent;
+}
+
+.detailCard:hover::before {
+    background: var(--gradient-blue);
+}
+
+.detailCard:hover {
+    transform: translateY(-5px);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xl);
+}
+
+.cardHotel {
+    background: #f0f7ff;
+}
+
+.cardHostel {
+    background: #fff1f2;
+}
+
+.cardRentals {
+    background: #f0fdf4;
+}
+
+.cardAgencies {
+    background: #fefce8;
+}
+
+[data-theme="dark"] .cardHotel {
+    background: rgba(24, 119, 242, 0.1);
+}
+
+[data-theme="dark"] .cardHostel {
+    background: rgba(225, 29, 72, 0.1);
+}
+
+[data-theme="dark"] .cardRentals {
+    background: rgba(34, 197, 94, 0.1);
+}
+
+[data-theme="dark"] .cardAgencies {
+    background: rgba(234, 179, 8, 0.1);
+}
+
+.detailIcon {
+    width: 120px;
+    height: 120px;
+    background: var(--primary-blue-lighter);
+    color: var(--primary-blue);
+    border-radius: var(--radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.detailIcon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-base);
+}
+
+.detailCard:hover .detailIcon img {
+    transform: scale(1.1);
+}
+
+[data-theme="dark"] .detailIcon {
+    background: rgba(24, 119, 242, 0.15);
+}
+
+.headerInfo h2 {
+    margin-bottom: var(--spacing-xs);
+    font-size: 2rem;
+}
+
+.accentText {
+    color: var(--primary-blue);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.cardBody {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-2xl);
+}
+
+.cardBody p {
+    color: var(--text-secondary);
+    line-height: 1.8;
+    font-size: 1.125rem;
+}
+
+.featuresList h4 {
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+.featuresList ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.featuresList li {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--text-secondary);
+}
+
+.featuresList li svg {
+    color: var(--accent-green);
+    flex-shrink: 0;
+}
+
+.ctaSection {
+    background: var(--background-secondary);
+}
+
+.ctaBox {
+    background: var(--gradient-blue);
+    border-radius: var(--radius-2xl);
+    padding: var(--spacing-3xl);
+    text-align: center;
+    color: white;
+}
+
+.ctaBox h2 {
+    color: white;
+    margin-bottom: var(--spacing-md);
+}
+
+.ctaBox p {
+    font-size: 1.25rem;
+    margin-bottom: var(--spacing-2xl);
+    color: white;
+    opacity: 0.9;
+}
+
+.ctaButtons {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-md);
+}
+
+[data-theme="dark"] .detailCard {
+    background: var(--background-elevated);
+}
+
+@media (max-width: 992px) {
+    .cardBody {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .cardHeader {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .ctaButtons {
+        flex-direction: column;
+    }
+}

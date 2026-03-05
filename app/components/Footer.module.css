@@ -1,0 +1,134 @@
+.footer {
+    background: var(--background-secondary);
+    border-top: 1px solid var(--border-light);
+    padding: var(--spacing-3xl) 0 var(--spacing-lg);
+    margin-top: var(--spacing-3xl);
+}
+
+.footerContent {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: var(--spacing-2xl);
+    margin-bottom: var(--spacing-2xl);
+}
+
+/* Brand Section */
+.brandSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.logoImg {
+    height: 64px;
+    /* Increased from 56px */
+    width: auto;
+    display: block;
+}
+
+.description {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 320px;
+}
+
+.socialLinks {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+}
+
+.socialLinks a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+    transition: all var(--transition-base);
+}
+
+.socialLinks a:hover {
+    background: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: white;
+    transform: translateY(-3px);
+}
+
+/* Links Section */
+.linksSection h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-lg);
+}
+
+.linksSection ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.linksSection a {
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+    display: inline-block;
+}
+
+.linksSection a:hover {
+    color: var(--primary-blue);
+    transform: translateX(4px);
+}
+
+[dir="rtl"] .linksSection a:hover {
+    transform: translateX(-4px);
+}
+
+/* Copyright */
+.copyright {
+    padding-top: var(--spacing-xl);
+    border-top: 1px solid var(--border-light);
+    text-align: center;
+}
+
+.copyright p {
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .footerContent {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-xl);
+    }
+}
+
+@media (max-width: 640px) {
+    .footerContent {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-xl);
+    }
+
+    .brandSection {
+        padding-bottom: var(--spacing-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .description {
+        max-width: 100%;
+    }
+}

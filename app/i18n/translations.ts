@@ -2,11 +2,12 @@ export const translations = {
   ar: {
     // Navigation
     nav: {
-      home: 'الصفحة الرئيسية',
-      about: 'من نحن',
+      home: 'الرئيسية',
+      explore: 'اكتشف',
       services: 'خدماتنا',
-      contact: 'تواصل معنا',
-      downloadApp: 'حمّل التطبيق الآن',
+      about: 'من نحن',
+      contact: 'اتصل بنا',
+      downloadApp: 'تحميل التطبيق',
       forProviders: 'انضم كشريك معنا',
     },
 
@@ -322,16 +323,29 @@ export const translations = {
       ctaApp: 'الذهاب لقسم تحميل التطبيق',
       backHome: 'العودة للرئيسية',
     },
+    listings: {
+      featured: 'عروض مميزة',
+      viewAll: 'عرض الكل',
+      price: 'السعر',
+      location: 'الموقع',
+      listingTypes: {
+        PROPERTY: 'عقار سياحي',
+        HOTEL_ROOM: 'غرفة فندق',
+        HOSTEL_BED: 'مرقد سياحي',
+        TRAVEL_PACKAGE: 'باكا سياحية',
+      },
+    },
   },
 
   en: {
     // Navigation
     nav: {
       home: 'Home',
-      about: 'About Us',
+      explore: 'Explore',
       services: 'Services',
+      about: 'About Us',
       contact: 'Contact Us',
-      downloadApp: 'Download Now',
+      downloadApp: 'Download App',
       forProviders: 'Join as Partner',
     },
 
@@ -647,15 +661,28 @@ export const translations = {
       ctaApp: 'Go to Download Section',
       backHome: 'Back to Home',
     },
+    listings: {
+      featured: 'Featured Listings',
+      viewAll: 'View All',
+      price: 'Price',
+      location: 'Location',
+      listingTypes: {
+        PROPERTY: 'Private Rental',
+        HOTEL_ROOM: 'Hotel Room',
+        HOSTEL_BED: 'Hostel Bed',
+        TRAVEL_PACKAGE: 'Travel Package',
+      },
+    },
   },
 
   fr: {
     // Navigation
     nav: {
       home: 'Accueil',
+      explore: 'Explorer',
+      services: 'Nos Services',
       about: 'À Propos',
-      services: 'Services',
-      contact: 'Contactez-nous',
+      contact: 'Contact',
       downloadApp: 'Télécharger',
       forProviders: 'Devenir Partenaire',
     },
@@ -970,6 +997,18 @@ export const translations = {
       message: 'Pour l\'instant, l\'application rezervitoo est prête. Veuillez vous inscrire sur l\'application en attendant que nous proposions l\'inscription sur le site web.',
       ctaApp: 'Aller à la section de téléchargement',
       backHome: 'Retour à l\'accueil',
+    },
+    listings: {
+      featured: 'Offres en Vedette',
+      viewAll: 'Voir Tout',
+      price: 'Prix',
+      location: 'Emplacement',
+      listingTypes: {
+        PROPERTY: 'Location Privée',
+        HOTEL_ROOM: 'Chambre d\'Hôtel',
+        HOSTEL_BED: 'Gîte Touristique',
+        TRAVEL_PACKAGE: 'Forfait Touristique',
+      },
     },
   },
 };

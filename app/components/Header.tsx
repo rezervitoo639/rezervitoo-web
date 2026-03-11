@@ -44,6 +44,7 @@ export default function Header() {
                     {/* Desktop Navigation */}
                     <nav className={styles.nav}>
                         <Link href="/">{t.nav.home}</Link>
+                        <Link href="/explore">{t.nav.explore}</Link>
                         <Link href="/services">{t.nav.services}</Link>
                         <Link href="/about">{t.nav.about}</Link>
                         <Link href="/contact">{t.nav.contact}</Link>
@@ -129,6 +130,7 @@ export default function Header() {
             <div className={`${styles.mobileMenu} ${isMenuOpen ? styles.open : ''}`}>
                 <nav className={styles.mobileNav}>
                     <Link href="/" onClick={() => setIsMenuOpen(false)}>{t.nav.home}</Link>
+                    <Link href="/explore" onClick={() => setIsMenuOpen(false)}>{t.nav.explore}</Link>
                     <Link href="/services" onClick={() => setIsMenuOpen(false)}>{t.nav.services}</Link>
                     <Link href="/about" onClick={() => setIsMenuOpen(false)}>{t.nav.about}</Link>
                     <Link href="/contact" onClick={() => setIsMenuOpen(false)}>{t.nav.contact}</Link>

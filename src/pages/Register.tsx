@@ -1,0 +1,273 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import Navbar from "@/components/Navbar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { authService } from "@/lib/api/authService";
+import { GoogleLogin } from "@react-oauth/google";
+
+const registerSchema = z.object({
+  accountType: z.enum(["USER", "PROVIDER"]),
+  firstName: z.string().trim().min(2).max(100),
+  lastName: z.string().trim().min(2).max(100),
+  phone: z.string().trim().min(10).max(15),
+  email: z.string().trim().email().max(255),
+  password: z.string().min(8).max(128).regex(/[A-Z]/).regex(/[0-9]/),
+  confirmPassword: z.string(),
+  role: z.enum(["HOST", "HOTEL", "HOSTEL", "AGENCY"]).optional(),
+  hostType: z.enum(["OWNER", "AGENT"]).optional(),
+  hotelName: z.string().optional(),
+  stars: z.string().optional(),
+  hostelName: z.string().optional(),
+  genderRestriction: z.enum(["Male", "Female", "Mixed"]).optional(),
+  agencyName: z.string().optional(),
+}).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] })
+  .refine((d) => { if (d.accountType === "PROVIDER") return !!d.role; return true; }, { path: ["role"] })
+  .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "HOST") return !!d.hostType; return true; }, { path: ["hostType"] })
+  .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "HOTEL") return !!d.hotelName && !!d.stars; return true; }, { path: ["hotelName"] })
+  .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "HOSTEL") return !!d.hostelName && !!d.genderRestriction; return true; }, { path: ["hostelName"] })
+  .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "AGENCY") return !!d.agencyName; return true; }, { path: ["agencyName"] });
+
+type RegisterForm = z.infer<typeof registerSchema>;
+
+const Register = () => {
+  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+  const { register, handleSubmit, watch, control, setValue, formState: { errors, isSubmitting } } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema), defaultValues: { accountType: "USER" } });
+  const accountType = watch("accountType");
+  const role = watch("role");
+
+  const onSubmit = async (data: RegisterForm) => {
+    try {
+      // Map frontend data to backend structure
+      const payload: any = {
+        email: data.email,
+        password: data.password,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        phone: data.phone,
+        account_type: data.accountType,
+      };
+
+      if (data.accountType === "PROVIDER") {
+        payload.role = data.role;
+        
+        if (data.role === "HOST") {
+          payload.host_type = data.hostType;
+        } else if (data.role === "HOTEL") {
+          payload.hotel_name = data.hotelName;
+          payload.stars = data.stars ? parseInt(data.stars) : undefined;
+        } else if (data.role === "HOSTEL") {
+          payload.hostel_name = data.hostelName;
+          payload.gender_restriction = data.genderRestriction;
+        } else if (data.role === "AGENCY") {
+          payload.agency_name = data.agencyName;
+        }
+
+        await authService.registerProvider(payload);
+      } else {
+        await authService.registerUser(payload);
+      }
+
+      toast.success(
+        t("register.success") || "Account created! Please check your email inbox to verify your account before logging in.",
+        { duration: 8000 }
+      );
+      navigate("/login");
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      // Handle field-specific errors if returned in the format { email: ["..."] }
+      if (typeof error === 'object' && !error.message) {
+        Object.keys(error).forEach(key => {
+          toast.error(`${key}: ${error[key].join(', ')}`);
+        });
+      } else {
+        toast.error(error.message || "Registration failed. Please try again.");
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
+        <div className="w-full max-w-lg">
+          <div className="text-center">
+            <div className="mx-auto flex h-12 w-auto items-center justify-center"><img src="/logo.png" alt="rezervitoo" className="h-12 w-auto" /></div>
+            <h1 className="mt-4 font-heading text-2xl font-bold text-foreground">{t("register.createAccount")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("register.joinAs")}</p>
+          </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
+            <Tabs defaultValue="USER" className="w-full" onValueChange={(val) => setValue("accountType", val as "USER" | "PROVIDER")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="USER">{t("register.traveler")}</TabsTrigger>
+                <TabsTrigger value="PROVIDER">{t("register.serviceProvider")}</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-foreground">{t("register.firstName")}</label>
+                <div className="relative mt-2"><User className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type="text" {...register("firstName")} placeholder="John" className="w-full rounded-xl border bg-background py-3 ps-11 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /></div>
+                {errors.firstName && <p className="mt-1.5 text-xs text-destructive">{errors.firstName.message}</p>}
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">{t("register.lastName")}</label>
+                <div className="relative mt-2"><User className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type="text" {...register("lastName")} placeholder="Doe" className="w-full rounded-xl border bg-background py-3 ps-11 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /></div>
+                {errors.lastName && <p className="mt-1.5 text-xs text-destructive">{errors.lastName.message}</p>}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">{t("register.phone")}</label>
+              <div className="relative mt-2"><Phone className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type="tel" {...register("phone")} placeholder="0123456789" className="w-full rounded-xl border bg-background py-3 ps-11 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /></div>
+              {errors.phone && <p className="mt-1.5 text-xs text-destructive">{errors.phone.message}</p>}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">{t("register.email")}</label>
+              <div className="relative mt-2"><Mail className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type="email" {...register("email")} placeholder="you@example.com" className="w-full rounded-xl border bg-background py-3 ps-11 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /></div>
+              {errors.email && <p className="mt-1.5 text-xs text-destructive">{errors.email.message}</p>}
+            </div>
+            {accountType === "PROVIDER" && (
+              <div className="space-y-5 rounded-xl border bg-muted/30 p-4">
+                <h3 className="font-semibold text-sm">{t("register.providerDetails")}</h3>
+                <div>
+                  <label className="text-sm font-medium text-foreground">{t("register.providerRole")}</label>
+                  <Controller name="role" control={control} render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger className="mt-2 w-full bg-background"><SelectValue placeholder={t("register.selectRole")} /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="HOST">{t("register.host")}</SelectItem>
+                        <SelectItem value="HOTEL">{t("register.hotel")}</SelectItem>
+                        <SelectItem value="HOSTEL">{t("register.hostel")}</SelectItem>
+                        <SelectItem value="AGENCY">{t("register.agency")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )} />
+                  {errors.role && <p className="mt-1.5 text-xs text-destructive">{errors.role.message}</p>}
+                </div>
+                {role === "HOST" && (
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">{t("register.hostType")}</label>
+                    <Controller name="hostType" control={control} render={({ field }) => (
+                      <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="OWNER" id="r1" /><Label htmlFor="r1">{t("register.propertyOwner")}</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="AGENT" id="r2" /><Label htmlFor="r2">{t("register.agent")}</Label></div>
+                      </RadioGroup>
+                    )} />
+                  </div>
+                )}
+                {role === "HOTEL" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-sm font-medium text-foreground">{t("register.hotelName")}</label><input type="text" {...register("hotelName")} className="mt-2 w-full rounded-xl border bg-background py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /></div>
+                    <div><label className="text-sm font-medium text-foreground">{t("register.stars")}</label>
+                      <Controller name="stars" control={control} render={({ field }) => (
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger className="mt-2 bg-background"><SelectValue placeholder={t("register.stars")} /></SelectTrigger>
+                          <SelectContent>{[1,2,3,4,5].map(s => <SelectItem key={s} value={s.toString()}>{s} ⭐</SelectItem>)}</SelectContent>
+                        </Select>
+                      )} />
+                    </div>
+                  </div>
+                )}
+                {role === "HOSTEL" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-sm font-medium text-foreground">{t("register.hostelName")}</label><input type="text" {...register("hostelName")} className="mt-2 w-full rounded-xl border bg-background py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /></div>
+                    <div><label className="text-sm font-medium text-foreground">{t("register.genderRestriction")}</label>
+                      <Controller name="genderRestriction" control={control} render={({ field }) => (
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger className="mt-2 bg-background"><SelectValue placeholder="..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Male">{t("register.maleOnly")}</SelectItem>
+                            <SelectItem value="Female">{t("register.femaleOnly")}</SelectItem>
+                            <SelectItem value="Mixed">{t("register.mixed")}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )} />
+                    </div>
+                  </div>
+                )}
+                {role === "AGENCY" && (
+                  <div><label className="text-sm font-medium text-foreground">{t("register.agencyName")}</label><input type="text" {...register("agencyName")} className="mt-2 w-full rounded-xl border bg-background py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /></div>
+                )}
+              </div>
+            )}
+            <div>
+              <label className="text-sm font-medium text-foreground">{t("register.password")}</label>
+              <div className="relative mt-2"><Lock className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type={showPassword ? "text" : "password"} {...register("password")} placeholder="••••••••" className="w-full rounded-xl border bg-background py-3 ps-11 pe-11 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute end-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
+              {errors.password && <p className="mt-1.5 text-xs text-destructive">{errors.password.message}</p>}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">{t("register.confirmPassword")}</label>
+              <div className="relative mt-2"><Lock className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type={showPassword ? "text" : "password"} {...register("confirmPassword")} placeholder="••••••••" className="w-full rounded-xl border bg-background py-3 ps-11 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /></div>
+              {errors.confirmPassword && <p className="mt-1.5 text-xs text-destructive">{errors.confirmPassword.message}</p>}
+            </div>
+            <Button type="submit" className="w-full rounded-xl text-base" size="lg" disabled={isSubmitting}>{isSubmitting ? t("register.creating") : t("register.createBtn")}</Button>
+          </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-center">
+              <GoogleLogin
+                onSuccess={async (credentialResponse) => {
+                  if (!credentialResponse.credential) return;
+                  try {
+                    const roleData: any = {};
+                    if (accountType === "PROVIDER") {
+                       if (!role) {
+                         toast.error(t("register.selectRole") || "Please select a provider role from the form before using Google Sign-up");
+                         return;
+                       }
+                       roleData.role = role;
+                    }
+
+                    await authService.loginGoogle({ 
+                      id_token: credentialResponse.credential, 
+                      account_type: accountType,
+                      ...roleData
+                    });
+                    
+                    const user = await authService.fetchMe();
+                    if (user.account_type === "PROVIDER") { 
+                      toast.success(`Welcome back, ${user.first_name}! (${user.role})`); 
+                      navigate("/dashboard"); 
+                    } else { 
+                      toast.success(`Welcome back, ${user.first_name}!`); 
+                      navigate("/"); 
+                    }
+                  } catch (error: any) {
+                    toast.error(error.message || "Google Registration failed");
+                  }
+                }}
+                onError={() => {
+                  toast.error("Google Registration Failed");
+                }}
+              />
+            </div>
+          </div>
+          <p className="mt-6 text-center text-sm text-muted-foreground">{t("register.haveAccount")} <Link to="/login" className="font-medium text-primary hover:underline">{t("register.signIn")}</Link></p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Register;

@@ -1,9 +1,9 @@
-# RezerVitoo Auth API Documentation
+ RezerVitoo Auth API Documentation
 
-**Base URL:** `https://api.rezervitoo.com/api/v1/users/`
+**Base URL:** `http://localhost:8000/api/v1/users/`
 
-**Version:** 1.4  
-**Last Updated:** March 13, 2026
+**Version:** 1.5  
+**Last Updated:** March 17, 2026
 
 ---
 
@@ -24,7 +24,9 @@
    - [Password Reset Request](#10-password-reset-request)
    - [Password Reset Confirm](#11-password-reset-confirm)
    - [Get Current User](#12-get-current-user-me)
-   - [Update Profile / Submit Documents](#13-update-profile--submit-documents)
+   - [Update Profile ](#13-update-profile--submit-documents)
+   - [Submit Documents ](#14-submit-documents)
+   - [Get Documents Status ](#15-get-documents-status)
    - [Get Provider Profiles](#14-get-provider-profiles-public)
    - [Get Single Provider](#15-get-single-provider-public)
 4. [Common Errors](#common-errors)
@@ -70,18 +72,17 @@ Register a normal user (guest/customer).
   "phone": "1234567890",
   "account_type": "USER"
 }
-```
 
 #### Field Validations
 
 | Field          | Type   | Required | Constraints                   |
 | -------------- | ------ | -------- | ----------------------------- |
-| `email`        | string | ✅ Yes   | Valid email format, unique    |
-| `password`     | string | ✅ Yes   | Min 8 characters              |
-| `first_name`   | string | ✅ Yes   | Cannot be empty/whitespace    |
-| `last_name`    | string | ✅ Yes   | Cannot be empty/whitespace    |
-| `phone`        | string | ✅ Yes   | Must be 10 digits including 0 |
-| `account_type` | string | ✅ Yes   | Must be "USER"                |
+| `email`        | string | ✅ Yes    | Valid email format, unique    |
+| `password`     | string | ✅ Yes    | Min 8 characters              |
+| `first_name`   | string | ✅ Yes    | Cannot be empty/whitespace    |
+| `last_name`    | string | ✅ Yes    | Cannot be empty/whitespace    |
+| `phone`        | string | ✅ Yes    | Must be 10 digits including 0 |
+| `account_type` | string | ✅ Yes    | Must be "USER"                |
 
 #### Success Response (201 Created)
 
@@ -435,8 +436,8 @@ Authenticate or register a user using Google OAuth 2.0. Returns JWT tokens and u
 
 | Field          | Type   | Required       | Description                                    |
 | -------------- | ------ | -------------- | ---------------------------------------------- |
-| `id_token`     | string | ✅ Yes         | Google OAuth ID token from Google Sign-In SDK  |
-| `account_type` | string | ✅ Yes         | `"USER"`, `"PROVIDER"`, or `"ADMIN"`           |
+| `id_token`     | string | ✅ Yes          | Google OAuth ID token from Google Sign-In SDK  |
+| `account_type` | string | ✅ Yes          | `"USER"`, `"PROVIDER"`, or `"ADMIN"`           |
 | `role`         | string | ⚠️ If PROVIDER | `"HOST"`, `"HOTEL"`, `"HOSTEL"`, or `"AGENCY"` |
 
 #### **Security Notes:**
@@ -554,7 +555,7 @@ Verify the user's email address using the signed token from the verification lin
 
 | Field   | Type   | Required | Description                               |
 | ------- | ------ | -------- | ----------------------------------------- |
-| `token` | string | ✅ Yes   | Signed verification token from email link |
+| `token` | string | ✅ Yes    | Signed verification token from email link |
 
 #### Success Response (200 OK)
 
@@ -635,8 +636,8 @@ Set a new password using the token received by email.
 
 | Field          | Type   | Required | Constraints      |
 | -------------- | ------ | -------- | ---------------- |
-| `token`        | string | ✅       | From reset email |
-| `new_password` | string | ✅       | Min 8 characters |
+| `token`        | string | ✅        | From reset email |
+| `new_password` | string | ✅        | Min 8 characters |
 
 #### Success Response (200 OK)
 
@@ -697,50 +698,109 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 13. Update Profile / Submit Documents
+### 13. Update Profile
 
-Update user profile fields or submit verification documents (for providers). Allows **Progressive Profiling**: Providers verify their accounts by submitting sensitive documents in this step.
+Update the authenticated user's basic profile fields.
 
 **Endpoint:** `PATCH /me/`  
 **Authentication:** Required (Bearer Token)  
-**Content-Type:** `multipart/form-data` (if uploading files) or `application/json`
+**Content-Type:** `multipart/form-data` (if uploading `pfp`) or `application/json`
 
-#### Request Body - Host Document Submission
+#### Writable Fields
 
-**Constraints:**
+| Field        | Type   | Description                  |
+| ------------ | ------ | ---------------------------- |
+| `first_name` | string | Max 150 characters           |
+| `last_name`  | string | Max 150 characters           |
+| `phone`      | string | 10 digits                    |
+| `pfp`        | file   | Profile picture (image file) |
 
-- `national_id`: 18 digits exactly. Cannot be blank.
-- `national_id_recto/verso`: Mandatory images.
+> **Note:** Document fields (`national_id`, `nrc`, `nif`, images, etc.) are no longer accepted here. Use `POST /documents/` instead.
 
-```json
-{
-  "national_id": "123456789012345678",
-  "national_id_recto": (file),
-  "national_id_verso": (file),
-  "host_type": "OWNER"
-}
-```
-
-#### Request Body - Business Document Submission (Hotel/Hostel/Agency)
-
-**Constraints:**
-
-- `nif`: 15 digits exactly. Cannot be blank.
-- `nrc`: 12-15 alphanumeric characters. Cannot be blank.
-- `nrc_image/nif_image`: Mandatory images.
+#### Request Body
 
 ```json
 {
-  "nrc": "123456789012AAA",
-  "nif": "123456789012345",
-  "nrc_image": (file),
-  "nif_image": (file)
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "phone": "0555123456"
 }
 ```
 
 #### Success Response (200 OK)
 
-Returns the updated user object including profile fields. **Note:** If all required documents are submitted, `verification_status` automatically changes from `UNVERIFIED` to `PENDING`.
+```json
+{
+  "id": 2,
+  "email": "host@example.com",
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "phone": "0555123456",
+  "role": "HOST",
+  "account_type": "PROVIDER",
+  "verification_status": "UNVERIFIED",
+  "email_verified": true,
+  "pfp": null
+}
+```
+
+#### Error Response (400 Bad Request)
+
+```json
+{
+  "first_name": ["This field may not be blank."]
+}
+```
+
+---
+
+### 14. Submit Verification Documents
+
+Submit (or re-submit after rejection) provider verification documents. Once **all required documents** for the provider's role are received, `verification_status` is automatically promoted from `UNVERIFIED` or `REJECTED` → `PENDING`.
+
+**Endpoint:** `POST /documents/`  
+**Authentication:** Required (Bearer Token — provider accounts only)  
+**Content-Type:** `multipart/form-data`
+
+#### Request Body — HOST provider
+
+**All three fields are required for HOST providers.**
+
+| Field               | Type   | Constraints                  |
+| ------------------- | ------ | ---------------------------- |
+| `national_id`       | string | Exactly 18 digits            |
+| `national_id_recto` | file   | Front image of national ID   |
+| `national_id_verso` | file   | Back image of national ID    |
+| `host_type`         | string | Optional: `OWNER` or `AGENT` |
+
+```
+national_id=123456789012345678
+national_id_recto=<file>
+national_id_verso=<file>
+host_type=OWNER
+```
+
+#### Request Body — HOTEL / HOSTEL / AGENCY provider
+
+**All four fields are required for business providers.**
+
+| Field       | Type   | Constraints                          |
+| ----------- | ------ | ------------------------------------ |
+| `nrc`       | string | 12–15 alphanumeric characters        |
+| `nif`       | string | Exactly 15 digits                    |
+| `nrc_image` | file   | NRC (business registration) document |
+| `nif_image` | file   | NIF (tax ID) document                |
+
+```
+nrc=123456789012AAA
+nif=123456789012345
+nrc_image=<file>
+nif_image=<file>
+```
+
+#### Success Response (200 OK)
+
+Returns the full user profile. `verification_status` has been promoted to `PENDING`.
 
 ```json
 {
@@ -752,16 +812,106 @@ Returns the updated user object including profile fields. **Note:** If all requi
   "role": "HOST",
   "account_type": "PROVIDER",
   "verification_status": "PENDING",
-  "national_id": "123456789012345678",
-  "national_id_recto": "http://.../img.jpg",
-  "national_id_verso": "http://.../img.jpg",
-  "host_type": "OWNER"
+  "email_verified": true,
+  "pfp": null
+}
+```
+
+#### Error Responses
+
+**400 — Missing required documents:**
+
+```json
+{
+  "national_id_recto": [
+    "National ID front image is required for HOST providers."
+  ],
+  "national_id_verso": [
+    "National ID back image is required for HOST providers."
+  ]
+}
+```
+
+**400 — Invalid `national_id` format:**
+
+```json
+{
+  "national_id": ["National ID must be exactly 18 digits."]
+}
+```
+
+**403 — Non-provider account:**
+
+```json
+{
+  "error": "Document submission is only available for provider accounts."
 }
 ```
 
 ---
 
-### 14. Get Provider Profiles (Public)
+### 15. Get Document Status
+
+Retrieve the current document submission status for the authenticated provider. Use this to determine which documents are still missing before a provider can submit for verification.
+
+**Endpoint:** `GET /documents/`  
+**Authentication:** Required (Bearer Token — provider accounts only)
+
+#### Success Response (200 OK) — HOST example
+
+```json
+{
+  "role": "HOST",
+  "verification_status": "UNVERIFIED",
+  "submitted": {
+    "national_id": true,
+    "national_id_recto": "https://api.rezervitoo.com/media/host_ids/recto.jpg",
+    "national_id_verso": null,
+    "host_type": "OWNER"
+  },
+  "missing": ["national_id_verso"],
+  "is_complete": false
+}
+```
+
+#### Success Response (200 OK) — HOTEL example
+
+```json
+{
+  "role": "HOTEL",
+  "verification_status": "PENDING",
+  "submitted": {
+    "nrc": true,
+    "nif": true,
+    "nrc_image": "https://api.rezervitoo.com/media/provider_docs/nrc.jpg",
+    "nif_image": "https://api.rezervitoo.com/media/provider_docs/nif.jpg"
+  },
+  "missing": [],
+  "is_complete": true
+}
+```
+
+#### Response Fields
+
+| Field                 | Type    | Description                                               |
+| --------------------- | ------- | --------------------------------------------------------- |
+| `role`                | string  | Provider role (`HOST`, `HOTEL`, `HOSTEL`, `AGENCY`)       |
+| `verification_status` | string  | Current status (`UNVERIFIED`, `PENDING`, `VERIFIED`, ...) |
+| `submitted`           | object  | Per-document status (bool for text fields, URL for files) |
+| `missing`             | array   | List of field names still absent                          |
+| `is_complete`         | boolean | `true` when all required documents are present            |
+
+#### Error Response (403)
+
+```json
+{
+  "error": "Document management is only available for provider accounts."
+}
+```
+
+---
+
+### 16. Get Provider Profiles (Public)
 
 Get a list of verified provider profiles. This endpoint is **publicly accessible** (no authentication required) and allows guests and users to browse available service providers.
 
@@ -855,7 +1005,7 @@ GET /api/v1/users/?role=HOST&page=1&page_size=10
 
 ---
 
-### 15. Get Single Provider (Public)
+### 17. Get Single Provider (Public)
 
 Get detailed information about a specific provider. This endpoint is **publicly accessible**.
 
@@ -1014,6 +1164,13 @@ For development/testing, you can use these test accounts:
 ---
 
 ## Change Log
+
+### Version 1.5 (March 17, 2026)
+
+- **Split `PATCH /me/`** — now handles profile fields only (`first_name`, `last_name`, `phone`, `pfp`). Document fields removed from this endpoint.
+- **Added `POST /documents/`** — dedicated endpoint for provider document submission (national ID for HOST; NRC + NIF for HOTEL/HOSTEL/AGENCY). Automatically promotes `UNVERIFIED`/`REJECTED` → `PENDING` on success.
+- **Added `GET /documents/`** — returns current document submission status per provider role, including which fields are still missing and an `is_complete` flag.
+- **Renumbered** sections 14–15 to 16–17 to accommodate the two new document endpoints.
 
 ### Version 1.4 (March 13, 2026)
 

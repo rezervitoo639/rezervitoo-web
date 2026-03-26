@@ -29,6 +29,7 @@ import UserProfile from "./pages/UserProfile.tsx";
 import VerifyEmail from "./pages/VerifyEmail.tsx";
 import ForgotPassword from "./pages/ForgotPassword.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
+import Notifications from "./pages/Notifications.tsx";
 
 import { ThemeProvider } from "./components/ThemeProvider";
 
@@ -52,6 +53,7 @@ const TitleUpdater = () => {
     else if (path.startsWith("/privacy")) titleKey = "footer.privacy";
     else if (path.startsWith("/terms")) titleKey = "footer.terms";
     else if (path.startsWith("/my-bookings") || path.startsWith("/bookings")) titleKey = "nav.myBookings";
+    else if (path.startsWith("/notifications")) titleKey = "nav.notifications";
     else if (path.startsWith("/wishlist")) titleKey = "nav.wishlist";
     else if (path.startsWith("/profile") || path.startsWith("/provider/")) titleKey = "nav.profile";
 
@@ -99,6 +101,7 @@ const App = () => (
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/password-reset" element={<ResetPassword />} />
+            <Route path="/notifications" element={<AuthGuard><Notifications /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

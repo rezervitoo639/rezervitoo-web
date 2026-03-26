@@ -10,7 +10,7 @@ import Navbar from "@/components/Navbar";
 import { authService } from "@/lib/api/authService";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { GoogleLogin } from "@react-oauth/google";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 const loginSchema = z.object({
   email: z.string().trim().email("Please enter a valid email address").max(255),
@@ -21,6 +21,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [accountType, setAccountType] = useState<"USER" | "PROVIDER">("USER");
+
   const { t } = useLanguage();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
   const navigate = useNavigate();
@@ -38,7 +39,10 @@ const Login = () => {
         navigate("/"); 
       }
     } catch (error: any) {
-      if (error.message === "Please verify your email before logging in.") {
+      const isUnverified = error.message?.includes("verify your email") || 
+                          error.message?.includes("active account found");
+      
+      if (isUnverified) {
         toast.error(error.message, {
           action: {
             label: "Resend Email",
@@ -70,14 +74,28 @@ const Login = () => {
             <p className="mt-1 text-sm text-muted-foreground">{t("login.signInToAccount")}</p>
           </div>
 
-          <div className="mt-8">
-            <Tabs defaultValue="USER" className="w-full" onValueChange={(val) => setAccountType(val as "USER" | "PROVIDER")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="USER">{t("register.traveler")}</TabsTrigger>
-                <TabsTrigger value="PROVIDER">{t("register.serviceProvider")}</TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="mt-6 flex justify-center p-1 bg-muted rounded-xl gap-1">
+            <button
+              type="button"
+              onClick={() => setAccountType("USER")}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                accountType === "USER" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("register.traveler")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountType("PROVIDER")}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                accountType === "PROVIDER" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("register.serviceProvider")}
+            </button>
           </div>
+
+
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-5">
             <div>
@@ -100,7 +118,7 @@ const Login = () => {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
+                  {t("common.orContinueWith")}
                 </span>
               </div>
             </div>
@@ -114,18 +132,14 @@ const Login = () => {
                       id_token: credentialResponse.credential, 
                       account_type: accountType 
                     };
-                    
-                    if (accountType === "PROVIDER") {
-                      payload.role = "HOST"; // Default role for provider google registration as per API docs
-                    }
 
                     await authService.loginGoogle(payload);
                     const user = await authService.fetchMe();
                     if (user.account_type === "PROVIDER") { 
-                      toast.success(`Welcome back, ${user.first_name}! (${user.role})`); 
+                      toast.success(t("login.welcomeProvider", { name: user.first_name, role: user.role })); 
                       navigate("/dashboard"); 
                     } else { 
-                      toast.success(`Welcome back, ${user.first_name}!`); 
+                      toast.success(t("login.welcomeCustomer", { name: user.first_name })); 
                       navigate("/"); 
                     }
                   } catch (error: any) {

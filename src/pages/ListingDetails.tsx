@@ -1,11 +1,11 @@
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { listingService, Listing, PackageListing } from "@/lib/api/listingService";
+import { listingService, Listing, PackageListing, getTranslatedName } from "@/lib/api/listingService";
 import { useEffect, useState } from "react";
 import { 
   Loader2, MapPin, Phone, Wifi, Car, Wind, Utensils, Waves, Shield,
   Star, Users, Building, CalendarDays, Heart, BookOpen,
-  MessageSquare, Flag, ThumbsUp
+  MessageSquare, Flag, ThumbsUp, AlertTriangle, Bed, Map
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
@@ -17,6 +17,17 @@ import ReportModal from "@/components/ReportModal";
 import { toast } from "sonner";
 import { authService } from "@/lib/api/authService";
 import { supportService } from "@/lib/api/supportService";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Fix Leaflet default marker icon issue with bundlers
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
 
 const StarDisplay = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) => (
   <div className="flex items-center gap-0.5">
@@ -35,6 +46,9 @@ const ListingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  
+  const [searchParams] = useSearchParams();
+  const reviewBookingId = searchParams.get("reviewBookingId");
   
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,6 +102,13 @@ const ListingDetails = () => {
 
     loadListing();
   }, [id, t]);
+
+  // Auto-open review modal if reviewBookingId is present
+  useEffect(() => {
+    if (reviewBookingId && isLoggedIn && isNormalUser) {
+      setShowReview(true);
+    }
+  }, [reviewBookingId, isLoggedIn, isNormalUser]);
 
   const handleWishlist = async () => {
     if (!isLoggedIn) {
@@ -154,7 +175,8 @@ const ListingDetails = () => {
     );
   }
 
-  const reviews: any[] = []; // Placeholder for reviews
+  const reviews = (listing as any).reviews || [];
+
   
   // Construct location display from state/province if location_text is missing
   const locationDisplay = listing.location_text || 
@@ -165,8 +187,8 @@ const ListingDetails = () => {
   const typeConfig = getListingTypeConfig(listing.listing_type);
 
   // Helper for amenity icons
-  const getAmenityIcon = (name: string) => {
-    const n = name.toLowerCase();
+  const getAmenityIcon = (amenity: any) => {
+    const n = (amenity.name_en || amenity.name || "").toLowerCase();
     if (n.includes("wifi")) return <Wifi className="h-5 w-5 text-primary" />;
     if (n.includes("park")) return <Car className="h-5 w-5 text-primary" />;
     if (n.includes("ac") || n.includes("clim")) return <Wind className="h-5 w-5 text-primary" />;
@@ -197,7 +219,11 @@ const ListingDetails = () => {
         />
       )}
       {showReview && (
-        <ReviewModal listing={{ id: listing.id, title: listing.title }} onClose={() => setShowReview(false)} />
+        <ReviewModal 
+          listing={{ id: listing.id, title: listing.title }} 
+          bookingId={reviewBookingId || undefined}
+          onClose={() => setShowReview(false)} 
+        />
       )}
       {showReport && (
         <ReportModal listing={{ id: listing.id, title: listing.title, owner_name: listing.owner_name }} onClose={() => setShowReport(false)} />
@@ -304,8 +330,62 @@ const ListingDetails = () => {
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {listing.amenity_details?.map((amenity) => (
                       <div key={amenity.id} className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3">
-                        {getAmenityIcon(amenity.name)}
-                        <span className="text-sm font-medium text-foreground">{amenity.name}</span>
+                        {getAmenityIcon(amenity)}
+                        <span className="text-sm font-medium text-foreground">{getTranslatedName(amenity, language)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {listing.restriction_details && listing.restriction_details.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                    {t("createListing.restrictions")}
+                  </h2>
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {listing.restriction_details.map((restriction) => (
+                      <div key={restriction.id} className="flex items-center gap-3 rounded-xl border bg-red-500/5 px-4 py-3">
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                        <span className="text-sm font-medium text-red-600 dark:text-red-400">{getTranslatedName(restriction, language)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {listing.nearby_details && listing.nearby_details.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
+                    <Map className="h-5 w-5 text-teal-500" />
+                    {t("createListing.nearbyPlaces") || "Nearby Places"}
+                  </h2>
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {listing.nearby_details.map((nearby) => (
+                      <div key={nearby.id} className="flex items-center gap-3 rounded-xl border bg-teal-500/5 px-4 py-3">
+                        <MapPin className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm font-medium text-teal-700 dark:text-teal-400">{getTranslatedName(nearby, language)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(listing as any).beds && (listing as any).beds.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
+                    <Bed className="h-5 w-5 text-blue-500" />
+                    {t("createListing.bedroomConfigs") || "Beds"}
+                  </h2>
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {(listing as any).beds.map((bed: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between rounded-xl border bg-card px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Bed className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium text-foreground">{getTranslatedName(bed.bed_type_details, language)}</span>
+                        </div>
+                        <span className="text-sm font-bold bg-muted px-2 py-0.5 rounded-md">x{bed.quantity}</span>
                       </div>
                     ))}
                   </div>
@@ -352,6 +432,29 @@ const ListingDetails = () => {
                 </div>
               )}
 
+              {listing.location_lat && listing.location_lng && (
+                <div className="mt-10">
+                  <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
+                    <MapPin className="h-5 w-5 text-red-500" />
+                    {t("listingDetails.location") || "Location"}
+                  </h2>
+                  <div className="h-[300px] w-full rounded-2xl overflow-hidden border">
+                    <MapContainer 
+                      center={[listing.location_lat, listing.location_lng]} 
+                      zoom={14} 
+                      className="h-full w-full z-10"
+                      scrollWheelZoom={false}
+                    >
+                      <TileLayer
+                        attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <Marker position={[listing.location_lat, listing.location_lng]} />
+                    </MapContainer>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-10">
                 <div className="flex items-center justify-between">
                   <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
@@ -365,14 +468,24 @@ const ListingDetails = () => {
                     </Button>
                   )}
                 </div>
-                <div className="mt-4 flex items-center gap-4 rounded-xl border bg-muted/30 p-4">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-foreground">4.5</div>
-                    <StarDisplay rating={4.5} size="md" />
-                    <div className="mt-1 text-xs text-muted-foreground">0 {t("listingDetails.reviews")}</div>
+                {reviews.length > 0 ? (
+                  <div className="mt-4 flex items-center gap-4 rounded-xl border bg-muted/30 p-4">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-foreground">
+                        {((listing as any).average_rating || 5).toFixed(1)}
+                      </div>
+                      <StarDisplay rating={(listing as any).average_rating || 5} size="md" />
+                      <div className="mt-1 text-xs text-muted-foreground">{reviews.length} {t("listingDetails.reviews")}</div>
+                    </div>
                   </div>
-                </div>
-                <p className="mt-4 text-sm text-muted-foreground">{t("listingDetails.noReviews")}</p>
+                ) : (
+                  <div className="mt-4 flex flex-col items-center justify-center gap-2 rounded-xl border bg-muted/30 p-8 text-center">
+                    <div className="text-4xl font-bold text-foreground">
+                      {t("listingDetails.new") || "New"}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{t("listingDetails.noReviews")}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/i18n/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import NotificationDropdown from "@/components/NotificationDropdown";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -106,6 +107,7 @@ const Navbar = () => {
         )}
 
         <div className="hidden items-center gap-3 md:flex">
+          {isLoggedIn && <NotificationDropdown />}
           <ThemeToggle />
           <LanguageSwitcher />
           {isLoggedIn ? (

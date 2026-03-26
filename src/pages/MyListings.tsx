@@ -58,7 +58,7 @@ const MyListings = () => {
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center">
               <AlertCircle className="h-10 w-10 text-muted-foreground/30" />
               <h3 className="mt-4 text-lg font-semibold">{t("listings.noResults")}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">You haven't posted any announcements yet.</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t("myListings.noListings")}</p>
               <Link to="/dashboard/create" className="mt-6">
                 <Button variant="outline">{t("myListings.addListing")}</Button>
               </Link>

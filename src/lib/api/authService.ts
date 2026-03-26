@@ -64,6 +64,15 @@ export const authService = {
     sessionStorage.removeItem(USER_DATA_KEY);
   },
 
+  /** Resolve media URLs (handle relative vs absolute) */
+  resolveMediaUrl(path: string | null | undefined): string | null {
+    if (!path) return null;
+    if (path.startsWith("http") || path.startsWith("data:")) return path;
+    // Remove leading slash if present
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    return `${API_BASE_URL}/${cleanPath}`;
+  },
+
   async login(credentials: any): Promise<AuthTokens> {
     const response = await fetch(`${BASE_URL}/login/`, {
       method: "POST",
@@ -72,8 +81,14 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || error.error || "Login failed");
+      let errorMessage = "Login failed";
+      try {
+        const error = await response.json();
+        errorMessage = error.detail || error.error || error.message || errorMessage;
+      } catch (e) {
+        // Fallback for non-JSON errors
+      }
+      throw new Error(errorMessage);
     }
 
     const tokens = (await response.json()) as AuthTokens;
@@ -121,7 +136,7 @@ export const authService = {
 
     if (!response.ok) {
       const error = await response.json();
-      throw error; // Throw raw error for form handling
+      throw error; 
     }
 
     return (await response.json()) as UserProfile;
@@ -208,11 +223,11 @@ export const authService = {
     return response.json();
   },
 
-  async verifyEmail(token: string): Promise<any> {
+  async verifyEmail(email: string, code: string): Promise<any> {
     const response = await fetch(`${BASE_URL}/verify-email/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ email, code }),
     });
 
     if (!response.ok) {
@@ -249,33 +264,129 @@ export const authService = {
     }
   },
 
-  async updateProfile(data: Partial<UserProfile> | FormData): Promise<UserProfile> {
+  async updateProfile(data: Partial<UserProfile> | FormData, onProgress?: (progress: number) => void): Promise<UserProfile> {
     const token = this.getAccessToken();
     if (!token) throw new Error("No access token found");
 
     const isFormData = data instanceof FormData;
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${token}`,
-    };
 
+    // If not FormData, use normal fetch as it doesn't need progress tracking typically
     if (!isFormData) {
-      headers["Content-Type"] = "application/json";
+      const response = await fetch(`${BASE_URL}/me/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Failed to update profile" }));
+        throw error;
+      }
+
+      const user = (await response.json()) as UserProfile;
+      sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
+      return user;
     }
 
-    const response = await fetch(`${BASE_URL}/me/`, {
-      method: "PATCH",
-      headers,
-      body: isFormData ? data : JSON.stringify(data),
+    // Use XMLHttpRequest for FormData to track upload progress
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PATCH", `${BASE_URL}/me/`);
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+      if (onProgress) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            onProgress(percentComplete);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const user = JSON.parse(xhr.responseText) as UserProfile;
+            sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
+            resolve(user);
+          } catch (e) {
+            resolve(JSON.parse(xhr.responseText)); // Fallback if type is slightly different
+          }
+        } else {
+          try {
+            const error = JSON.parse(xhr.responseText);
+            reject(error);
+          } catch (e) {
+            reject({ detail: "Failed to update profile" });
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network error during profile update"));
+      xhr.send(data);
+    });
+  },
+
+  async fetchDocumentStatus(): Promise<any> {
+    const token = this.getAccessToken();
+    if (!token) throw new Error("No access token found");
+
+    const response = await fetch(`${BASE_URL}/documents/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Failed to update profile" }));
-      throw new Error(error.detail || error.error || "Failed to update profile");
+      throw new Error("Failed to fetch document status");
     }
 
-    const user = (await response.json()) as UserProfile;
-    sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
-    return user;
+    return response.json();
+  },
+
+  async submitDocuments(formData: FormData, onProgress?: (progress: number) => void): Promise<UserProfile> {
+    const token = this.getAccessToken();
+    if (!token) throw new Error("No access token found");
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${BASE_URL}/documents/`);
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+      if (onProgress) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            onProgress(percentComplete);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const user = JSON.parse(xhr.responseText) as UserProfile;
+            sessionStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
+            resolve(user);
+          } catch (e) {
+            resolve(JSON.parse(xhr.responseText));
+          }
+        } else {
+          try {
+            const error = JSON.parse(xhr.responseText);
+            reject(error);
+          } catch (e) {
+            reject({ detail: "Failed to submit documents" });
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network error during document submission"));
+      xhr.send(formData);
+    });
   },
 
   async logout(): Promise<void> {

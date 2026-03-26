@@ -8,23 +8,38 @@ import { API_BASE_URL } from "./config";
 
 const BASE_URL = `${API_BASE_URL}/api/v1/listings`;
 
+export const getTranslatedName = (resource: any, currentLang: string): string => {
+  if (!resource) return "";
+  const translated = resource[`name_${currentLang}`];
+  return translated || resource.name || "";
+};
+
 export type ListingType = "PROPERTY" | "HOTEL_ROOM" | "HOSTEL_BED" | "TRAVEL_PACKAGE";
 
 export interface Amenity {
   id: number;
   name: string;
+  name_ar?: string;
+  name_en?: string;
+  name_fr?: string;
   icon: string | null;
 }
 
 export interface Restriction {
   id: number;
   name: string;
+  name_ar?: string;
+  name_en?: string;
+  name_fr?: string;
   icon: string | null;
 }
 
 export interface Nearby {
   id: number;
   name: string;
+  name_ar?: string;
+  name_en?: string;
+  name_fr?: string;
   icon: string | null;
 }
 
@@ -33,6 +48,9 @@ export interface Bed {
   bed_type_details: {
     id: number;
     name: string;
+    name_ar?: string;
+    name_en?: string;
+    name_fr?: string;
     icon: string;
   };
   quantity: number;
@@ -157,32 +175,145 @@ export const listingService = {
     return response.json();
   },
 
-  /** Create a new listing */
-  async createListing(formData: FormData): Promise<Listing> {
+  /** Create a new listing with progress tracking */
+  async createListing(formData: FormData, onProgress?: (progress: number) => void): Promise<Listing> {
     const token = authService.getAccessToken();
-    const response = await fetch(`${BASE_URL}/`, {
+    
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${BASE_URL}/`);
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+      if (onProgress && xhr.upload) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            onProgress(percentComplete);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch (e) {
+            resolve({} as Listing);
+          }
+        } else {
+          let errorData;
+          try {
+            errorData = JSON.parse(xhr.responseText);
+          } catch (e) {
+            errorData = { detail: xhr.statusText };
+          }
+          const error: any = new Error(errorData.detail || "Failed to create listing");
+          error.status = xhr.status;
+          error.data = errorData;
+          reject(error);
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(formData);
+    });
+  },
+
+  /** Update an existing listing with progress tracking */
+  async updateListing(id: string | number, formData: FormData, onProgress?: (progress: number) => void): Promise<Listing> {
+    const token = authService.getAccessToken();
+    
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PATCH", `${BASE_URL}/${id}/`);
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+      if (onProgress && xhr.upload) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            onProgress(percentComplete);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch (e) {
+            resolve({} as Listing);
+          }
+        } else {
+          let errorData;
+          try {
+            errorData = JSON.parse(xhr.responseText);
+          } catch (e) {
+            errorData = { detail: xhr.statusText };
+          }
+          const error: any = new Error(errorData.detail || "Failed to update listing");
+          error.status = xhr.status;
+          error.data = errorData;
+          reject(error);
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(formData);
+    });
+  },
+
+  /** Create a schedule for a travel package */
+  async createPackageSchedule(listingId: number | string, scheduleData: { start_date: string, max_capacity: number }): Promise<PackageSchedule> {
+    const token = authService.getAccessToken();
+    const response = await fetch(`${BASE_URL}/${listingId}/schedules/`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
       },
-      body: formData,
+      body: JSON.stringify(scheduleData)
     });
-
+    
     if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch (e) {
-        errorData = { detail: response.statusText };
-      }
-      
-      const error: any = new Error(errorData.detail || "Failed to create listing");
-      error.status = response.status;
-      error.data = errorData;
-      throw error;
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Failed to create package schedule");
     }
-
     return response.json();
+  },
+
+  /** Update an existing schedule for a travel package */
+  async updatePackageSchedule(listingId: number | string, scheduleId: number | string, scheduleData: any): Promise<PackageSchedule> {
+    const token = authService.getAccessToken();
+    const response = await fetch(`${BASE_URL}/${listingId}/schedules/${scheduleId}/`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(scheduleData)
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Failed to update package schedule");
+    }
+    return response.json();
+  },
+
+  /** Delete a schedule for a travel package */
+  async deletePackageSchedule(listingId: number | string, scheduleId: number | string): Promise<void> {
+    const token = authService.getAccessToken();
+    const response = await fetch(`${BASE_URL}/${listingId}/schedules/${scheduleId}/`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error("Failed to delete package schedule");
+    }
   },
 
   /** Metadata fetching */

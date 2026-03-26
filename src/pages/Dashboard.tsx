@@ -77,7 +77,7 @@ const Dashboard = () => {
           )}
         </div>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <div className="mt-6">
           <div className="rounded-2xl border bg-card p-6 shadow-sm">
             <h2 className="font-heading text-lg font-semibold text-foreground">{t("dashboard.quickActions")}</h2>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -93,26 +93,6 @@ const Dashboard = () => {
                 <CalendarCheck className="h-4 w-4" />
                 {t("dashboard.viewMyBookings")}
               </Link>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border bg-card p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="font-heading text-lg font-semibold text-foreground">{t("dashboard.recentActivity") || "Recent Activity"}</h2>
-              <button className="text-xs font-medium text-primary hover:underline">{t("common.viewAll") || "View all"}</button>
-            </div>
-            <div className="mt-4 space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/50">
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground truncate">New booking for "Luxury Villa"</div>
-                    <div className="text-xs text-muted-foreground">Today at 2:30 PM</div>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>

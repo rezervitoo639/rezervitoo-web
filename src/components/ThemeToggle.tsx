@@ -11,7 +11,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 
 export function ThemeToggle() {
   const { setTheme } = useTheme();
-  const { language } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <DropdownMenu>
@@ -24,13 +24,13 @@ export function ThemeToggle() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align={language === "ar" ? "start" : "end"} className="rounded-xl">
         <DropdownMenuItem onClick={() => setTheme("light")} className="rounded-lg cursor-pointer">
-          Light
+          {t("theme.light")}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("dark")} className="rounded-lg cursor-pointer">
-          Dark
+          {t("theme.dark")}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("system")} className="rounded-lg cursor-pointer">
-          System
+          {t("theme.system")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

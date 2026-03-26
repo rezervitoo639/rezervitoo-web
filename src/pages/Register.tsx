@@ -3,11 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Phone, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { formatApiError } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -28,7 +29,7 @@ const registerSchema = z.object({
   hotelName: z.string().optional(),
   stars: z.string().optional(),
   hostelName: z.string().optional(),
-  genderRestriction: z.enum(["Male", "Female", "Mixed"]).optional(),
+  genderRestriction: z.enum(["MALE", "FEMALE", "MIXED"]).optional(),
   agencyName: z.string().optional(),
 }).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] })
   .refine((d) => { if (d.accountType === "PROVIDER") return !!d.role; return true; }, { path: ["role"] })
@@ -56,10 +57,10 @@ const Register = () => {
         first_name: data.firstName,
         last_name: data.lastName,
         phone: data.phone,
-        account_type: data.accountType,
+        account_type: accountType, // Using watched value for certainty
       };
 
-      if (data.accountType === "PROVIDER") {
+      if (accountType === "PROVIDER") {
         payload.role = data.role;
         
         if (data.role === "HOST") {
@@ -80,26 +81,58 @@ const Register = () => {
       }
 
       toast.success(
-        t("register.success") || "Account created! Please check your email inbox to verify your account before logging in.",
+        t("register.success") || "Account created! Please check your email inbox for the verification code.",
         { duration: 8000 }
       );
-      navigate("/login");
+      navigate(`/verify-email?email=${encodeURIComponent(data.email)}`, { 
+        state: { password: data.password } 
+      });
     } catch (error: any) {
       console.error("Registration error:", error);
-      // Handle field-specific errors if returned in the format { email: ["..."] }
-      if (typeof error === 'object' && !error.message) {
-        Object.keys(error).forEach(key => {
-          toast.error(`${key}: ${error[key].join(', ')}`);
-        });
-      } else {
-        toast.error(error.message || "Registration failed. Please try again.");
-      }
+      toast.error(formatApiError(error, t));
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {isSubmitting && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-md bg-card border rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-4"
+            >
+              <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold">{t("register.creatingAccount") || "Creating Account..."}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {t("register.pleaseWait") || "Please wait while we set up your account and send a verification code."}
+                </p>
+              </div>
+              <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: "0%" }}
+                  animate={{ width: "90%" }}
+                  transition={{ duration: 10, ease: "linear" }}
+                  className="h-full bg-primary"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
         <div className="w-full max-w-lg">
           <div className="text-center">
@@ -108,12 +141,37 @@ const Register = () => {
             <p className="mt-1 text-sm text-muted-foreground">{t("register.joinAs")}</p>
           </div>
           <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
-            <Tabs defaultValue="USER" className="w-full" onValueChange={(val) => setValue("accountType", val as "USER" | "PROVIDER")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="USER">{t("register.traveler")}</TabsTrigger>
-                <TabsTrigger value="PROVIDER">{t("register.serviceProvider")}</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <input type="hidden" {...register("accountType")} />
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { value: "USER", label: t("register.traveler"), desc: t("register.travelerDesc") || "Explore & book stays", img: "/user_role.png" },
+                { value: "PROVIDER", label: t("register.serviceProvider"), desc: t("register.providerDesc") || "List & manage properties", img: "/provider_role.png" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setValue("accountType", opt.value)}
+                  className={`relative rounded-2xl border-2 overflow-hidden text-left transition-all focus:outline-none ${
+                    accountType === opt.value
+                      ? "border-primary ring-2 ring-primary/30 shadow-lg shadow-primary/10"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <div className="h-40 w-full overflow-hidden bg-muted">
+                    <img src={opt.img} alt={opt.label} className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
+                  </div>
+                  <div className={`p-3 transition-colors ${accountType === opt.value ? "bg-primary/5" : "bg-card"}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm text-foreground">{opt.label}</span>
+                      <span className={`h-4 w-4 rounded-full border-2 transition-all flex items-center justify-center ${accountType === opt.value ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
+                        {accountType === opt.value && <span className="h-1.5 w-1.5 rounded-full bg-white block" />}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground leading-tight">{opt.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-foreground">{t("register.firstName")}</label>
@@ -186,9 +244,9 @@ const Register = () => {
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <SelectTrigger className="mt-2 bg-background"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Male">{t("register.maleOnly")}</SelectItem>
-                            <SelectItem value="Female">{t("register.femaleOnly")}</SelectItem>
-                            <SelectItem value="Mixed">{t("register.mixed")}</SelectItem>
+                            <SelectItem value="MALE">{t("register.maleOnly")}</SelectItem>
+                            <SelectItem value="FEMALE">{t("register.femaleOnly")}</SelectItem>
+                            <SelectItem value="MIXED">{t("register.mixed")}</SelectItem>
                           </SelectContent>
                         </Select>
                       )} />
@@ -220,7 +278,7 @@ const Register = () => {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
+                  {t("common.orContinueWith")}
                 </span>
               </div>
             </div>
@@ -247,10 +305,10 @@ const Register = () => {
                     
                     const user = await authService.fetchMe();
                     if (user.account_type === "PROVIDER") { 
-                      toast.success(`Welcome back, ${user.first_name}! (${user.role})`); 
+                      toast.success(t("login.welcomeProvider", { name: user.first_name, role: user.role })); 
                       navigate("/dashboard"); 
                     } else { 
-                      toast.success(`Welcome back, ${user.first_name}!`); 
+                      toast.success(t("login.welcomeCustomer", { name: user.first_name })); 
                       navigate("/"); 
                     }
                   } catch (error: any) {

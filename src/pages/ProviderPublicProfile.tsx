@@ -132,7 +132,7 @@ const ProviderPublicProfile = () => {
               <div className="relative -mt-16 overflow-hidden rounded-full border-4 border-card bg-accent shadow-xl">
                 <div className="flex h-32 w-32 items-center justify-center">
                   {provider.pfp ? (
-                    <img src={provider.pfp} alt={displayName} className="h-full w-full object-cover" />
+                    <img src={authService.resolveMediaUrl(provider.pfp) || ""} alt={displayName} className="h-full w-full object-cover" />
                   ) : (
                     <span className="font-heading text-4xl font-bold text-accent-foreground">
                       {provider.first_name?.[0]}{provider.last_name?.[0]}

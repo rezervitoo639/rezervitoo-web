@@ -146,7 +146,7 @@ const UserBookings = () => {
                         </span>
                         <div className="flex gap-2">
                           {booking.status === "COMPLETED" && (
-                            <Link to={`/listing/${booking.listing_details.id}`}>
+                            <Link to={`/listing/${booking.listing_details.id}?reviewBookingId=${booking.id}`}>
                               <Button size="sm" variant="outline" className="rounded-xl text-xs">{t("userBookings.review")}</Button>
                             </Link>
                           )}

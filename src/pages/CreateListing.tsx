@@ -8,14 +8,20 @@ import {
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { authService, UserProfile } from "@/lib/api/authService";
-import { listingService, Amenity, Restriction, Nearby } from "@/lib/api/listingService";
+import { listingService, Amenity, Restriction, Nearby, getTranslatedName } from "@/lib/api/listingService";
 import { useLanguage } from "@/i18n/LanguageContext";
+import MapLocationPicker from "@/components/MapLocationPicker";
+import { compressImage } from "@/lib/utils/imageUtils";
+import { getWilayas, getCommunes, Wilaya } from "@/lib/algeriaLocations";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Listing types and roles mapping
 type ListingType = "PROPERTY" | "HOTEL_ROOM" | "HOSTEL_BED" | "TRAVEL_PACKAGE";
@@ -65,14 +71,76 @@ const CreateListing = () => {
         setApiRestrictions(rests);
         setApiNearby(near);
         setApiBedTypes(beds);
+
+        // Set Wilayas from helper
+        const uniqueWilayas = getWilayas();
+        setWilayas(uniqueWilayas);
+
+        // If edit mode, fetch existing listing details
+        if (id) {
+          const listing = await listingService.fetchListingById(id);
+          setTitle(listing.title);
+          setDescription(listing.description);
+          setPrice(listing.price);
+          setNegotiable(!!listing.negotiable);
+          setLocationText(listing.location_text || "");
+          setLat(listing.location_lat || 36.7538);
+          setLng(listing.location_lng || 3.0588);
+          
+          // Set state/province if editing (mapping from backend fields)
+          if (listing.state) setSelectedWilaya(listing.state);
+          if (listing.province) setSelectedCommune(listing.province);
+          
+          setSelectedAmenities(listing.amenity_details?.map(a => a.id) || []);
+          setSelectedRestrictions(listing.restriction_details?.map(r => r.id) || []);
+          setSelectedNearby(listing.nearby_details?.map(n => n.id) || []);
+          // ... rest of editing logic
+
+          if (listing.listing_type === "PROPERTY") {
+            setPropertyType(listing.property_type);
+            setBedrooms(String(listing.bedrooms));
+            setBathrooms(String(listing.bathrooms));
+            setMaxGuests(String(listing.max_guests));
+            setMinDuration(String(listing.min_duration));
+            setBedsConfig(listing.beds.map(b => ({ bed_type_id: b.bed_type_details.id, quantity: b.quantity })));
+          } else if (listing.listing_type === "HOTEL_ROOM") {
+            setRoomCategory(listing.room_category);
+            setMaxGuests(String(listing.max_guests));
+            setMinDuration(String(listing.min_duration));
+            setQuantity(String(listing.quantity));
+            setBedsConfig(listing.beds.map(b => ({ bed_type_id: b.bed_type_details.id, quantity: b.quantity })));
+          } else if (listing.listing_type === "HOSTEL_BED") {
+            setHostelRoomType(listing.room_type);
+            setGenderRestriction(listing.gender);
+            setMaxGuests(String(listing.max_guests));
+            setQuantity(String(listing.quantity));
+            setBedsConfig(listing.beds.map(b => ({ bed_type_id: b.bed_type_details.id, quantity: b.quantity })));
+          } else if (listing.listing_type === "TRAVEL_PACKAGE") {
+            setPackageType(listing.package_type);
+            setItinerary(listing.itinerary_items.map(item => ({ 
+              day: item.day, 
+              title: item.title, 
+              description: item.description 
+            })));
+            setSchedules(listing.schedules.map(s => ({ 
+              id: s.id,
+              start_date: s.start_date, 
+              max_capacity: s.max_capacity 
+            })));
+          }
+          
+          // Set previews for existing images
+          setCoverPreview(listing.cover_image);
+          setGalleryPreviews(listing.images.map(img => img.image));
+        }
       } catch (error) {
-        console.error("Failed to fetch metadata in CreateListing", error);
+        console.error("Failed to fetch data in CreateListing", error);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [id]);
 
   // Derive role + listing type from session
   const role = user?.role as ProviderRole | undefined;
@@ -87,8 +155,14 @@ const CreateListing = () => {
 
   // Step 2: Location & Core Specs
   const [locationText, setLocationText] = useState("");
-  const [lat, setLat] = useState<string>("36.7538");
-  const [lng, setLng] = useState<string>("3.0588");
+  const [lat, setLat] = useState<number>(36.7538);
+  const [lng, setLng] = useState<number>(3.0588);
+  
+  // Algeria Cities Data
+  const [wilayas, setWilayas] = useState<Wilaya[]>([]);
+  const [selectedWilaya, setSelectedWilaya] = useState("");
+  const [selectedCommune, setSelectedCommune] = useState("");
+
   // Type specific details
   const [propertyType, setPropertyType] = useState("APARTMENT");
   const [bedrooms, setBedrooms] = useState("1");
@@ -113,7 +187,8 @@ const CreateListing = () => {
     { day: 1, title: "Arrival", description: "" },
     { day: 2, title: "Departure", description: "" },
   ]);
-  const [schedules, setSchedules] = useState([{ start_date: "", max_capacity: 20 }]);
+  const [schedules, setSchedules] = useState<{ id?: number; start_date: string, max_capacity: number }[]>([{ start_date: "", max_capacity: 20 }]);
+  const [deletedSchedules, setDeletedSchedules] = useState<number[]>([]);
 
   // Step 5: Media
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -124,6 +199,7 @@ const CreateListing = () => {
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // ── Handlers
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,6 +289,21 @@ const CreateListing = () => {
     setBedsConfig(prev => prev.filter(b => b.bed_type_id !== typeId));
   };
 
+  // Schedule helpers
+  const addSchedule = () => setSchedules(prev => [...prev, { start_date: "", max_capacity: 20 }]);
+  const removeSchedule = (idx: number) => {
+    const toRemove = schedules[idx];
+    if (toRemove.id) {
+      setDeletedSchedules(prev => [...prev, toRemove.id!]);
+    }
+    setSchedules(prev => prev.filter((_, i) => i !== idx));
+  };
+  const updateSchedule = (idx: number, field: string, val: any) => {
+    const updated = [...schedules];
+    updated[idx] = { ...updated[idx], [field]: val };
+    setSchedules(updated);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step < totalSteps) {
@@ -221,8 +312,10 @@ const CreateListing = () => {
       return;
     }
 
-    if (!coverImage) { toast.error("Cover image is required"); return; }
-    if (galleryImages.length < 5) { toast.error("At least 5 gallery images are required"); return; }
+    if (!isEditMode) {
+      if (!coverImage) { toast.error("Cover image is required"); return; }
+      if (galleryImages.length < 5) { toast.error("At least 5 gallery images are required"); return; }
+    }
 
     setSubmitting(true);
     try {
@@ -232,11 +325,28 @@ const CreateListing = () => {
       formData.append("price", price);
       formData.append("negotiable", String(negotiable));
       formData.append("location_text", locationText);
-      formData.append("location_lat", lat);
-      formData.append("location_lng", lng);
-      formData.append("cover_image", coverImage);
+      formData.append("location_lat", String(lat));
+      formData.append("location_lng", String(lng));
+      formData.append("state", selectedWilaya);
+      formData.append("province", selectedCommune);
+
+      // ── Process and Compress Images
+      setUploadProgress(1); // Start progress at 1% to show it's working
       
-      galleryImages.forEach(img => formData.append("uploaded_images", img));
+      // Compress Cover Image
+      if (coverImage) {
+        const compressedCover = await compressImage(coverImage, 2048, 0.85);
+        formData.append("cover_image", compressedCover, "cover.jpg");
+      }
+      
+      // Compress Gallery Images
+      for (let i = 0; i < galleryImages.length; i++) {
+        const compressedImg = await compressImage(galleryImages[i], 1920, 0.8);
+        formData.append("uploaded_images", compressedImg, `gallery_${i}.jpg`);
+        // Update progress slightly during compression phase (0-10%)
+        setUploadProgress(Math.floor((i + 1) / galleryImages.length * 10));
+      }
+
       selectedAmenities.forEach(id => formData.append("amenities", String(id)));
       selectedRestrictions.forEach(id => formData.append("restrictions", String(id)));
       selectedNearby.forEach(id => formData.append("nearby", String(id)));
@@ -265,13 +375,59 @@ const CreateListing = () => {
         formData.append("package_type", packageType);
         formData.append("duration_days", String(itinerary.length));
         formData.append("uploaded_itinerary", JSON.stringify(itinerary));
-        // Schedules are usually created in a separate step or handled by the backend if sent like this
-        // but the doc says after creating package, create schedules. 
-        // We might want to allow sending them or just warn.
+        formData.append("uploaded_schedules", JSON.stringify(schedules));
       }
 
-      await listingService.createListing(formData);
-      toast.success(t("createListing.successPublished"));
+      let createdListing: any;
+      if (isEditMode) {
+        createdListing = await listingService.updateListing(id, formData, (progress) => {
+          setUploadProgress(progress);
+        });
+        toast.success(t("createListing.successUpdated"));
+      } else {
+        createdListing = await listingService.createListing(formData, (progress) => {
+          setUploadProgress(progress);
+        });
+        toast.success(t("createListing.successPublished"));
+      }
+
+      // ── Process Schedules (TRAVEL_PACKAGE only)
+      if (listingType === "TRAVEL_PACKAGE") {
+        setUploadProgress(100); 
+        const listingIdToUse = isEditMode ? id : createdListing?.id;
+        
+        if (listingIdToUse) {
+          try {
+             // 1. Delete removed schedules
+             if (isEditMode && deletedSchedules.length > 0) {
+               await Promise.all(deletedSchedules.map(scheduleId => 
+                 listingService.deletePackageSchedule(listingIdToUse, scheduleId)
+               ));
+             }
+             
+             // 2. Add or update active schedules
+             if (schedules.length > 0) {
+               await Promise.all(schedules.map(schedule => {
+                 if (schedule.id) {
+                    return listingService.updatePackageSchedule(listingIdToUse, schedule.id, {
+                       start_date: schedule.start_date,
+                       max_capacity: schedule.max_capacity
+                    });
+                 } else {
+                    return listingService.createPackageSchedule(listingIdToUse, {
+                       start_date: schedule.start_date,
+                       max_capacity: schedule.max_capacity
+                    });
+                 }
+               }));
+             }
+          } catch (scheduleError) {
+             console.error("Failed to add/update schedules:", scheduleError);
+             toast.error(t("createListing.schedulesError") || "Listing created, but some schedules failed to save. Please review them.");
+          }
+        }
+      }
+
       navigate("/dashboard/listings");
     } catch (error: any) {
       console.error("Publication failed", error);
@@ -290,8 +446,51 @@ const CreateListing = () => {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="max-w-3xl mx-auto py-8 px-4">
+          <div className="mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-64 rounded-xl" />
+              <Skeleton className="h-4 w-48 rounded-lg" />
+            </div>
+            <Skeleton className="h-12 w-32 rounded-2xl" />
+          </div>
+          
+          <div className="mb-12 flex items-center justify-between gap-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex flex-1 items-center gap-2">
+                <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                {i < 5 && <Skeleton className="h-1 w-full rounded-full" />}
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-8">
+            <div className="rounded-3xl border bg-card/50 p-8 shadow-sm space-y-6">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-xl" />
+                <Skeleton className="h-6 w-32 rounded-lg" />
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-20 rounded" />
+                  <Skeleton className="h-14 w-full rounded-2xl" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24 rounded" />
+                  <Skeleton className="h-32 w-full rounded-2xl" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-16 rounded" />
+                    <Skeleton className="h-14 w-full rounded-2xl" />
+                  </div>
+                  <div className="flex items-end flex-col gap-2">
+                    <Skeleton className="h-14 w-full rounded-2xl" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -309,6 +508,51 @@ const CreateListing = () => {
       </DashboardLayout>
     );
   }
+
+  const UploadProgressOverlay = () => (
+    <AnimatePresence>
+      {submitting && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-6"
+        >
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md bg-card border rounded-3xl p-8 shadow-2xl space-y-6"
+          >
+            <div className="flex flex-col items-center text-center space-y-2">
+              <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                <Upload className="h-8 w-8 text-primary animate-bounce" />
+              </div>
+              <h3 className="text-xl font-bold">
+                {uploadProgress < 12 ? (t("common.optimizing") || "Optimizing & Uploading...") : (t("common.uploading") || "Uploading Images...")}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {uploadProgress < 12 
+                  ? (t("createListing.optimizingDesc") || "Compressing your images for faster upload...")
+                  : (t("createListing.uploadingDesc") || "Please wait while we process and upload your listing media.")}
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm font-bold">
+                <span>{uploadProgress}%</span>
+                <span>{uploadProgress === 100 ? "Finalizing..." : "In Progress"}</span>
+              </div>
+              <Progress value={uploadProgress} className="h-3 rounded-full" />
+            </div>
+
+            <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold">
+              Do not close this window
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   const StepIndicator = () => (
     <div className="mb-8 md:mb-12">
@@ -352,11 +596,17 @@ const CreateListing = () => {
 
   return (
     <DashboardLayout>
+      <UploadProgressOverlay />
       <div className="max-w-3xl mx-auto pb-20" dir={language === "ar" ? "rtl" : "ltr"}>
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold font-heading">
-              {isEditMode ? t("createListing.edit") : t("createListing.add")} {t(`common.${listingType.toLowerCase().replace("_", "")}` as any) || listingType}
+              {isEditMode ? t("createListing.edit") : t("createListing.add")} {{
+                PROPERTY: t("common.property"),
+                HOTEL_ROOM: t("common.hotelRoom"),
+                HOSTEL_BED: t("common.hostel"),
+                TRAVEL_PACKAGE: t("common.travelPackage"),
+              }[listingType] || listingType}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm md:text-base">
               {t("createListing.step", { step, total: totalSteps })}: {
@@ -458,8 +708,45 @@ const CreateListing = () => {
                 </div>
                 
                 <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <Label className="text-base font-semibold">{t("filters.location") || "Wilaya"}</Label>
+                      <Select value={selectedWilaya} onValueChange={(val) => {
+                        setSelectedWilaya(val);
+                        setSelectedCommune(""); // Reset commune when wilaya changes
+                      }}>
+                        <SelectTrigger className="mt-2.5 rounded-2xl h-14 bg-background px-5">
+                          <SelectValue placeholder="Select Wilaya" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {wilayas.map(w => (
+                            <SelectItem key={w.code} value={w.nameAscii}>{w.nameAscii}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-base font-semibold">Commune</Label>
+                      <Select 
+                        value={selectedCommune} 
+                        onValueChange={setSelectedCommune}
+                        disabled={!selectedWilaya}
+                      >
+                        <SelectTrigger className="mt-2.5 rounded-2xl h-14 bg-background px-5">
+                          <SelectValue placeholder={selectedWilaya ? "Select Commune" : "Select Wilaya first"} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {selectedWilaya && getCommunes(wilayas.find(w => w.nameAscii === selectedWilaya)?.code || "")
+                            .map(c => (
+                              <SelectItem key={c.nameAscii} value={c.nameAscii}>{c.nameAscii}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div>
-                    <Label className="text-base font-semibold">{t("createListing.location")}</Label>
+                    <Label className="text-base font-semibold">{t("createListing.location") || "Address Details"}</Label>
                     <input
                       type="text"
                       value={locationText}
@@ -470,15 +757,18 @@ const CreateListing = () => {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-[10px] md:text-sm uppercase font-bold text-muted-foreground pl-1">{t("createListing.lat")}</Label>
-                      <input type="text" value={lat} onChange={(e) => setLat(e.target.value)} className="mt-1.5 w-full rounded-xl border bg-background px-4 py-3 text-sm md:text-base focus:ring-1 focus:ring-primary outline-none" />
+                  <div>
+                    <Label className="text-base font-semibold">{t("createListing.mapPickerTitle")}</Label>
+                    <div className="mt-3">
+                      <MapLocationPicker
+                        lat={lat}
+                        lng={lng}
+                        onChange={(newLat, newLng) => { setLat(newLat); setLng(newLng); }}
+                      />
                     </div>
-                    <div>
-                      <Label className="text-[10px] md:text-sm uppercase font-bold text-muted-foreground pl-1">{t("createListing.lng")}</Label>
-                      <input type="text" value={lng} onChange={(e) => setLng(e.target.value)} className="mt-1.5 w-full rounded-xl border bg-background px-4 py-3 text-sm md:text-base focus:ring-1 focus:ring-primary outline-none" />
-                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {t("createListing.selectedCoords")}: {lat.toFixed(5)}, {lng.toFixed(5)}
+                    </p>
                   </div>
 
                   <div className="pt-4 border-t space-y-6">
@@ -507,7 +797,7 @@ const CreateListing = () => {
                     {listingType === "HOTEL_ROOM" && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
-                          <Label className="text-base font-semibold">Room Category</Label>
+                          <Label className="text-base font-semibold">{t("createListing.roomCategory")}</Label>
                           <Select value={roomCategory} onValueChange={setRoomCategory}>
                             <SelectTrigger className="mt-2 rounded-xl h-12 bg-background"><SelectValue /></SelectTrigger>
                             <SelectContent>{roomCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
@@ -523,14 +813,14 @@ const CreateListing = () => {
                     {listingType === "HOSTEL_BED" && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                          <div>
-                          <Label className="text-base font-semibold">Room Type</Label>
+                          <Label className="text-base font-semibold">{t("listingDetails.dormitory") || "Room Type"}</Label>
                           <RadioGroup value={hostelRoomType} onValueChange={setHostelRoomType} className="flex gap-4 mt-3">
-                            <div className="flex items-center gap-2"><RadioGroupItem value="DORM" id="r-dorm" /><Label htmlFor="r-dorm">Dormitory</Label></div>
-                            <div className="flex items-center gap-2"><RadioGroupItem value="PRIVATE" id="r-priv" /><Label htmlFor="r-priv">Private</Label></div>
+                            <div className="flex items-center gap-2"><RadioGroupItem value="DORM" id="r-dorm" /><Label htmlFor="r-dorm">{t("listingDetails.dormitory")}</Label></div>
+                            <div className="flex items-center gap-2"><RadioGroupItem value="PRIVATE" id="r-priv" /><Label htmlFor="r-priv">{t("listingDetails.privateRoom")}</Label></div>
                           </RadioGroup>
                         </div>
                         <div>
-                          <Label className="text-base font-semibold">Gender Rule</Label>
+                          <Label className="text-base font-semibold">{t("createListing.genderRule") || "Gender Rule"}</Label>
                           <Select value={genderRestriction} onValueChange={setGenderRestriction}>
                             <SelectTrigger className="mt-2 rounded-xl h-12 bg-background"><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -572,13 +862,26 @@ const CreateListing = () => {
           {step === 3 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                <div className="rounded-3xl border bg-card p-5 md:p-8 shadow-sm">
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500"><ListChecks className="h-5 w-5" /></div>
-                  <h3 className="text-lg font-bold">{t("createListing.featuresRules")}</h3>
-                </div>
+                
+                {listingType === "TRAVEL_PACKAGE" ? (
+                  <div className="py-12 text-center">
+                    <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                      <ListChecks className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-xl font-bold">{t("createListing.featuresNotNeeded") || "Features Not Required"}</h3>
+                    <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
+                      {t("createListing.featuresNotNeededDesc") || "Travel packages do not require configuring property amenities or bed restrictions. Please click 'Next' to continue to the Itinerary & Schedules configuration."}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-6 flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500"><ListChecks className="h-5 w-5" /></div>
+                      <h3 className="text-lg font-bold">{t("createListing.featuresRules")}</h3>
+                    </div>
 
-                <div className="space-y-8">
-                  {/* Amenities */}
+                    <div className="space-y-8">
+                      {/* Amenities */}
                   <div>
                     <Label className="text-base font-semibold flex items-center justify-between">
                       {t("createListing.availableAmenities")}
@@ -596,7 +899,7 @@ const CreateListing = () => {
                           <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-background border">
                              {amenity.icon ? <img src={amenity.icon} className="h-4 w-4 opacity-70" alt="" /> : <Check className="h-4 w-4 opacity-20" />}
                           </div>
-                          <span className="text-sm font-medium truncate">{amenity.name}</span>
+                          <span className="text-sm font-medium truncate">{getTranslatedName(amenity, language)}</span>
                         </div>
                       ))}
                     </div>
@@ -604,7 +907,7 @@ const CreateListing = () => {
 
                   {/* Restrictions */}
                   <div className="pt-6 border-t">
-                    <Label className="text-base font-semibold">Listing Restrictions</Label>
+                    <Label className="text-base font-semibold">{t("createListing.restrictions")}</Label>
                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                        {apiRestrictions.map(r => (
                          <div 
@@ -617,7 +920,7 @@ const CreateListing = () => {
                            <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-background border">
                              {r.icon ? <img src={r.icon} className="h-4 w-4 opacity-70" alt="" /> : <AlertTriangle className="h-4 w-4 opacity-20" />}
                            </div>
-                           <span className="text-sm font-medium truncate">{r.name}</span>
+                           <span className="text-sm font-medium truncate">{getTranslatedName(r, language)}</span>
                          </div>
                        ))}
                      </div>
@@ -638,17 +941,19 @@ const CreateListing = () => {
                            <div className="h-4 w-4 rounded-full border border-current flex items-center justify-center shrink-0">
                              {selectedNearby.includes(n.id) && <Check className="h-2 w-2" />}
                            </div>
-                           <span className="text-sm font-medium truncate">{n.name}</span>
+                           <span className="text-sm font-medium truncate">{getTranslatedName(n, language)}</span>
                          </div>
                        ))}
                      </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
-          {/* STEP 4: CONFIG (BEDS OR ITINERARY) */}
+      {/* STEP 4: CONFIG (BEDS OR ITINERARY) */}
           {step === 4 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                <div className="rounded-3xl border bg-card p-5 md:p-8 shadow-sm">
@@ -701,6 +1006,67 @@ const CreateListing = () => {
                         <Plus className="h-4 w-4" /> {t("createListing.addDayToItinerary")}
                       </Button>
                     </div>
+
+                    {/* PACKAGE SCHEDULES (MANAGEMENT) */}
+                    <div className="pt-8 border-t space-y-6">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">{t("createListing.schedules")}</Label>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={addSchedule}
+                          className="text-primary hover:text-primary hover:bg-primary/10 gap-2 font-bold"
+                        >
+                          <Plus className="h-4 w-4" /> {t("createListing.addSchedule")}
+                        </Button>
+                      </div>
+
+                      <div className="grid gap-4">
+                        {schedules.map((s, idx) => (
+                          <div key={idx} className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border bg-muted/5 transition-all hover:border-primary/20">
+                            <div className="grow grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-[10px] md:text-xs font-bold uppercase text-muted-foreground mb-1 block pl-1">
+                                  {t("createListing.startDate")}
+                                </Label>
+                                <input 
+                                  type="date" 
+                                  value={s.start_date}
+                                  onChange={e => updateSchedule(idx, "start_date", e.target.value)}
+                                  className="w-full rounded-xl border bg-background px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] md:text-xs font-bold uppercase text-muted-foreground mb-1 block pl-1">
+                                  {t("createListing.maxCapacity")}
+                                </Label>
+                                <input 
+                                  type="number" 
+                                  value={s.max_capacity}
+                                  onChange={e => updateSchedule(idx, "max_capacity", parseInt(e.target.value) || 0)}
+                                  className="w-full rounded-xl border bg-background px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none"
+                                  min="1"
+                                  required
+                                />
+                              </div>
+                            </div>
+                            {schedules.length > 1 && (
+                              <div className="flex items-end justify-end sm:pb-1">
+                                <button 
+                                  type="button" 
+                                  onClick={() => removeSchedule(idx)}
+                                  className="p-2.5 text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   /* BED CONFIGURATION */
@@ -708,7 +1074,7 @@ const CreateListing = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                        {apiBedTypes.filter(bt => !bedsConfig.find(bc => bc.bed_type_id === bt.id)).map(bt => (
                          <button key={bt.id} type="button" onClick={() => addBedType(bt.id)} className="flex items-center gap-2 p-3 rounded-xl border bg-muted/20 hover:bg-muted/40 transition-colors text-sm font-medium">
-                           <Plus className="h-4 w-4" /> {bt.name}
+                           <Plus className="h-4 w-4" /> {getTranslatedName(bt, language)}
                          </button>
                        ))}
                     </div>
@@ -723,7 +1089,7 @@ const CreateListing = () => {
                                 <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
                                    <Settings className="h-4 w-4 text-muted-foreground" />
                                 </div>
-                                {details?.name}
+                                {getTranslatedName(details, language)}
                               </span>
                               <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-3 sm:pt-0">
                                 <div className="flex items-center border rounded-xl overflow-hidden bg-muted/20">

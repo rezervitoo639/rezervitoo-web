@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { bookingService, Booking } from "@/lib/api/bookingService";
+import { authService } from "@/lib/api/authService";
 
 const MyBookings = () => {
   const { t, language } = useLanguage();
@@ -18,7 +19,34 @@ const MyBookings = () => {
       setLoading(true);
       try {
         const data = await bookingService.fetchBookings();
-        setBookings(data.results);
+        const bookings = data.results;
+
+        // Fetch user details for all unique user IDs in parallel
+        const uniqueUserIds = [...new Set(bookings.map((b) => b.user))];
+        const userMap: Record<number, { name: string; phone: string }> = {};
+
+        await Promise.all(
+          uniqueUserIds.map(async (userId) => {
+            try {
+              const user = await authService.fetchUserById(userId);
+              userMap[userId] = {
+                name: `${user.first_name} ${user.last_name}`.trim(),
+                phone: user.phone,
+              };
+            } catch {
+              // If fetching user details fails, we'll fall back to "User #ID"
+            }
+          })
+        );
+
+        // Enrich bookings with user name and phone
+        const enriched = bookings.map((b) => ({
+          ...b,
+          user_name: userMap[b.user]?.name || undefined,
+          user_phone: userMap[b.user]?.phone || undefined,
+        }));
+
+        setBookings(enriched);
       } catch (error) {
         toast.error("Failed to load bookings");
       } finally {
@@ -27,6 +55,7 @@ const MyBookings = () => {
     };
     loadBookings();
   }, []);
+
 
   const statusConfig: Record<string, { label: string; icon: React.ElementType; className: string }> = {
     PENDING:   { label: t("common.pending"),  icon: Clock,        className: "text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800" },
@@ -166,7 +195,8 @@ const MyBookings = () => {
                       {isExpanded && (
                         <div className="mt-2 border-t pt-3 space-y-1 text-xs text-muted-foreground">
                           <p><span className="font-medium text-foreground">{t("myBookingsProvider.listingId")}:</span> #{booking.listing}</p>
-                          <p><span className="font-medium text-foreground">{t("myBookingsProvider.userId")}:</span> #{booking.user}</p>
+                          <p><span className="font-medium text-foreground">{t("myBookingsProvider.customer")}:</span> {booking.user_name || `User #${booking.user}`}</p>
+                          {booking.user_phone && <p><span className="font-medium text-foreground">{t("myBookingsProvider.phone")}:</span> {booking.user_phone}</p>}
                           <p><span className="font-medium text-foreground">{t("myBookingsProvider.submitted")}:</span> {new Date(booking.created_at).toLocaleString(language === "ar" ? "ar-DZ" : language === "fr" ? "fr-FR" : "en-GB")}</p>
                           <p><span className="font-medium text-foreground">{t("myBookingsProvider.totalPrice")}:</span> {Number(booking.total_price).toLocaleString()} {t("common.da")}</p>
                         </div>

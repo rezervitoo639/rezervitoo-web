@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { authService, UserProfile as AuthUser } from "@/lib/api/authService";
 import ImageCropper from "@/components/ImageCropper";
+import { Progress } from "@/components/ui/progress";
 
 const UserProfile = () => {
   const { t, language } = useLanguage();
@@ -23,6 +24,8 @@ const UserProfile = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -32,7 +35,7 @@ const UserProfile = () => {
         setFirstName(data.first_name || "");
         setLastName(data.last_name || "");
         setPhone(data.phone || "");
-        setAvatarPreview(data.pfp || null);
+        setAvatarPreview(authService.resolveMediaUrl(data.pfp));
       } catch (error) {
         console.error("Failed to load user profile", error);
       } finally {
@@ -70,13 +73,22 @@ const UserProfile = () => {
         formData.append("pfp", avatarFile);
       }
       
-      const data = await authService.updateProfile(formData);
+      const data = await authService.updateProfile(formData, (progress) => {
+        setUploadProgress(progress);
+      });
       setUser(data);
+      setAvatarPreview(authService.resolveMediaUrl(data.pfp));
+      setUploadSuccess(true);
       toast.success(t("providerProfile.profileUpdated"));
       setEditMode(false);
       setAvatarFile(null);
+      setTimeout(() => {
+        setUploadSuccess(false);
+        setUploadProgress(0);
+      }, 3000);
     } catch (error: any) {
       toast.error(error.message || "Failed to update profile");
+      setUploadProgress(0);
     } finally {
       setSaving(false);
     }
@@ -113,11 +125,21 @@ const UserProfile = () => {
               <div className="relative shrink-0">
                 <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-primary/10 bg-accent ring-2 ring-primary/5">
                   {avatarPreview ? (
-                    <img src={avatarPreview} alt="Profile" className="h-full w-full object-cover" />
+                    <img src={avatarPreview} alt="Profile" className={`h-full w-full object-cover transition-opacity ${saving ? "opacity-50" : "opacity-100"}`} />
                   ) : (
                     <span className="font-heading text-4xl font-bold text-accent-foreground">
                       {user.first_name[0]}{user.last_name[0]}
                     </span>
+                  )}
+                  {saving && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
+                      <Loader2 className="h-8 w-8 animate-spin text-white" />
+                    </div>
+                  )}
+                  {uploadSuccess && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-green-500/20 animate-in fade-in zoom-in duration-300">
+                      <CheckCircle2 className="h-12 w-12 text-green-500" />
+                    </div>
                   )}
                 </div>
                 <label
@@ -248,19 +270,33 @@ const UserProfile = () => {
               {editMode && (
                 <div className="flex gap-3 pt-4 border-t">
                   <Button type="submit" className="rounded-xl" disabled={saving}>
-                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {t("providerProfile.saveChanges")}
+                    {saving ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {uploadProgress > 0 ? `${Math.round(uploadProgress)}%` : t("common.saving") || "Saving..."}
+                      </span>
+                    ) : t("providerProfile.saveChanges")}
                   </Button>
                   <Button type="button" variant="outline" className="rounded-xl" onClick={() => {
                     setFirstName(user.first_name);
                     setLastName(user.last_name);
                     setPhone(user.phone);
-                    setAvatarPreview(user.pfp);
+                    setAvatarPreview(authService.resolveMediaUrl(user.pfp));
                     setAvatarFile(null);
                     setEditMode(false);
                   }}>
                     {t("providerProfile.cancel")}
                   </Button>
+                </div>
+              )}
+
+              {saving && uploadProgress > 0 && (
+                <div className="mt-4 space-y-1">
+                  <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
+                    <span>{t("common.uploading") || "Uploading..."}</span>
+                    <span>{Math.round(uploadProgress)}%</span>
+                  </div>
+                  <Progress value={uploadProgress} className="h-1.5" />
                 </div>
               )}
             </form>

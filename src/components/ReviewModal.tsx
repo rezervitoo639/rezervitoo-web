@@ -2,15 +2,17 @@ import { useState } from "react";
 import { X, Star, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { formatApiError } from "@/lib/utils";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { supportService } from "@/lib/api/supportService";
 
 interface ReviewModalProps {
   listing: { id: string | number; title: string };
+  bookingId?: string | number;
   onClose: () => void;
 }
 
-const ReviewModal = ({ listing, onClose }: ReviewModalProps) => {
+const ReviewModal = ({ listing, bookingId, onClose }: ReviewModalProps) => {
   const { t, language } = useLanguage();
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
@@ -36,11 +38,17 @@ const ReviewModal = ({ listing, onClose }: ReviewModalProps) => {
       formData.append("rating", rating.toString());
       formData.append("comment", comment);
       
+      // Essential for new API requirements
+      if (bookingId) {
+        formData.append("booking", bookingId.toString());
+      }
+      formData.append("review_type", "USER_TO_LISTING");
+      
       await supportService.createReview(formData);
       setSubmitted(true);
       toast.success(t("reviewModal.successToast"));
-    } catch (error) {
-      toast.error(t("common.error") || "Failed to submit review");
+    } catch (error: any) {
+      toast.error(formatApiError(error, t));
     } finally {
       setLoading(false);
     }

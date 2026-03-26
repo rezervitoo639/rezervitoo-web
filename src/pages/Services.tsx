@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Bed, Map, CreditCard, Layout, ShieldCheck, Headphones } from "lucide-react";
+import { Bed, Map, Layout, ShieldCheck, Headphones } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ const Services = () => {
     { icon: Bed, title: t("services.accommodation"), desc: t("services.accommodationDesc") },
     { icon: Map, title: t("services.travelPackages"), desc: t("services.travelPackagesDesc") },
     { icon: Layout, title: t("services.providerDashboard"), desc: t("services.providerDashboardDesc") },
-    { icon: CreditCard, title: t("services.securePayments"), desc: t("services.securePaymentsDesc") },
     { icon: ShieldCheck, title: t("services.verifiedListings"), desc: t("services.verifiedListingsDesc") },
     { icon: Headphones, title: t("services.support"), desc: t("services.supportDesc") },
   ];

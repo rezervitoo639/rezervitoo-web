@@ -98,8 +98,7 @@ export const supportService = {
 
     if (!response.ok) {
       const error = await response.json();
-      const firstError = Object.values(error)[0];
-      throw new Error(Array.isArray(firstError) ? firstError[0] : "Failed to submit review");
+      throw error;
     }
 
     return response.json();
@@ -144,6 +143,7 @@ export interface SupportContact {
   whatsapp_phone: string | null;
   facebook: string | null;
   instagram: string | null;
+  tiktok: string | null;
   linkedin: string | null;
   updated_at: string;
 }

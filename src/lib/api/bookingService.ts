@@ -11,10 +11,19 @@ const BASE_URL = `${API_BASE_URL}/api/v1/bookings`;
 
 export type BookingStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELLED" | "COMPLETED";
 
+export interface GuestDetails {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  pfp: string | null;
+}
+
 export interface Booking {
   id: number;
   user: number;
   listing: number;
+  listing_title: string;
   listing_type_at_booking: string;
   start_date: string;
   end_date: string;
@@ -25,7 +34,8 @@ export interface Booking {
   created_at: string;
   updated_at: string;
   listing_details: Listing;
-  // Provider side specific details often included in results
+  guest_details?: GuestDetails;
+  // Legacy enriched fields (kept for compatibility)
   user_name?: string;
   user_phone?: string;
 }

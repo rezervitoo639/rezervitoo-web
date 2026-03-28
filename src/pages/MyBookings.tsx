@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { CheckCircle2, XCircle, Clock, MapPin, ChevronDown, ChevronUp, Users, Phone, User, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, MapPin, ChevronDown, ChevronUp, Users, Phone, User, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { bookingService, Booking } from "@/lib/api/bookingService";
-import { authService } from "@/lib/api/authService";
 
 const MyBookings = () => {
   const { t, language } = useLanguage();
@@ -19,34 +18,7 @@ const MyBookings = () => {
       setLoading(true);
       try {
         const data = await bookingService.fetchBookings();
-        const bookings = data.results;
-
-        // Fetch user details for all unique user IDs in parallel
-        const uniqueUserIds = [...new Set(bookings.map((b) => b.user))];
-        const userMap: Record<number, { name: string; phone: string }> = {};
-
-        await Promise.all(
-          uniqueUserIds.map(async (userId) => {
-            try {
-              const user = await authService.fetchUserById(userId);
-              userMap[userId] = {
-                name: `${user.first_name} ${user.last_name}`.trim(),
-                phone: user.phone,
-              };
-            } catch {
-              // If fetching user details fails, we'll fall back to "User #ID"
-            }
-          })
-        );
-
-        // Enrich bookings with user name and phone
-        const enriched = bookings.map((b) => ({
-          ...b,
-          user_name: userMap[b.user]?.name || undefined,
-          user_phone: userMap[b.user]?.phone || undefined,
-        }));
-
-        setBookings(enriched);
+        setBookings(data.results);
       } catch (error) {
         toast.error("Failed to load bookings");
       } finally {
@@ -166,9 +138,27 @@ const MyBookings = () => {
                         </div>
                       </div>
 
+                      {/* Guest contact card */}
+                      {booking.guest_details && (
+                        <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                            <User className="h-4 w-4" />
+                          </div>
+                          <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+                            <span className="text-xs font-semibold text-foreground truncate">{booking.guest_details.name}</span>
+                            <div className="flex flex-wrap gap-2">
+                              <a href={`tel:${booking.guest_details.phone}`} className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
+                                <Phone className="h-3 w-3" />{booking.guest_details.phone}
+                              </a>
+                              <a href={`mailto:${booking.guest_details.email}`} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:underline truncate">
+                                <Mail className="h-3 w-3" />{booking.guest_details.email}
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><User className="h-3 w-3" /> {booking.user_name || `User #${booking.user}`}</span>
-                        {booking.user_phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {booking.user_phone}</span>}
                         <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {booking.guests_count} {t("myBookingsProvider.guests")}</span>
                         <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {booking.start_date} → {booking.end_date}</span>
                       </div>
@@ -195,8 +185,13 @@ const MyBookings = () => {
                       {isExpanded && (
                         <div className="mt-2 border-t pt-3 space-y-1 text-xs text-muted-foreground">
                           <p><span className="font-medium text-foreground">{t("myBookingsProvider.listingId")}:</span> #{booking.listing}</p>
-                          <p><span className="font-medium text-foreground">{t("myBookingsProvider.customer")}:</span> {booking.user_name || `User #${booking.user}`}</p>
-                          {booking.user_phone && <p><span className="font-medium text-foreground">{t("myBookingsProvider.phone")}:</span> {booking.user_phone}</p>}
+                          {booking.guest_details && (
+                            <>
+                              <p><span className="font-medium text-foreground">{t("myBookingsProvider.customer")}:</span> {booking.guest_details.name}</p>
+                              <p><span className="font-medium text-foreground">{t("myBookingsProvider.phone")}:</span> <a href={`tel:${booking.guest_details.phone}`} className="text-primary hover:underline">{booking.guest_details.phone}</a></p>
+                              <p><span className="font-medium text-foreground">Email:</span> <a href={`mailto:${booking.guest_details.email}`} className="hover:underline">{booking.guest_details.email}</a></p>
+                            </>
+                          )}
                           <p><span className="font-medium text-foreground">{t("myBookingsProvider.submitted")}:</span> {new Date(booking.created_at).toLocaleString(language === "ar" ? "ar-DZ" : language === "fr" ? "fr-FR" : "en-GB")}</p>
                           <p><span className="font-medium text-foreground">{t("myBookingsProvider.totalPrice")}:</span> {Number(booking.total_price).toLocaleString()} {t("common.da")}</p>
                         </div>

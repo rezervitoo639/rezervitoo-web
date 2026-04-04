@@ -28,47 +28,18 @@ const ProviderProfile = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  // Document upload fields (for HOST)
-  const [nationalId, setNationalId] = useState("");
-  const [idRecto, setIdRecto] = useState<File | null>(null);
-  const [idVerso, setIdVerso] = useState<File | null>(null);
-  const [hostType, setHostType] = useState<string>("");
 
-  // Document upload fields (for Business roles: HOTEL, HOSTEL, AGENCY)
-  const [nrc, setNrc] = useState("");
-  const [nif, setNif] = useState("");
-  const [nrcImage, setNrcImage] = useState<File | null>(null);
-  const [nifImage, setNifImage] = useState<File | null>(null);
-
-  // Document status from API
-  const [docStatus, setDocStatus] = useState<any>(null);
 
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const [userData, docData] = await Promise.all([
-          authService.fetchMe(),
-          authService.fetchDocumentStatus().catch(() => null)
-        ]);
-
+        const userData = await authService.fetchMe();
         setUser(userData);
-        setDocStatus(docData);
         
         setFirstName(userData.first_name || "");
         setLastName(userData.last_name || "");
         setPhone(userData.phone || "");
         setAvatarPreview(authService.resolveMediaUrl(userData.pfp));
-        
-        // Populate existing document info if available
-        if (docData?.submitted) {
-          if (userData.role === "HOST") {
-            setNationalId(docData.submitted.national_id ? "******************" : "");
-            setHostType(docData.submitted.host_type || "OWNER");
-          } else {
-            setNrc(docData.submitted.nrc ? "**************" : "");
-            setNif(docData.submitted.nif ? "***************" : "");
-          }
-        }
       } catch (error) {
         console.error("Failed to load provider profile", error);
       } finally {
@@ -197,78 +168,7 @@ const ProviderProfile = () => {
     }
   };
 
-  const handleDocumentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    
-    try {
-      const formData = new FormData();
-      
-      if (user?.role === "HOST") {
-        // Only append if they are actually changed/provided (though the form marks them as required)
-        if (nationalId && !nationalId.includes("*")) formData.append("national_id", nationalId);
-        if (idRecto) formData.append("national_id_recto", idRecto);
-        if (idVerso) formData.append("national_id_verso", idVerso);
-        if (hostType) formData.append("host_type", hostType);
-      } else {
-        // Business roles: HOTEL, HOSTEL, AGENCY
-        if (nrc && !nrc.includes("*")) formData.append("nrc", nrc);
-        if (nif && !nif.includes("*")) formData.append("nif", nif);
-        if (nrcImage) formData.append("nrc_image", nrcImage);
-        if (nifImage) formData.append("nif_image", nifImage);
-      }
-      
-      // ── Compress and Prepare Documents
-      setUploadProgress(5);
-      
-      const compressedFormData = new FormData();
-      // Copy non-file fields
-      for (const [key, value] of formData.entries()) {
-        if (!(value instanceof File)) {
-          compressedFormData.append(key, value);
-        }
-      }
-      
-      // Compress and append File fields
-      let fileCount = 0;
-      for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          fileCount++;
-        }
-      }
-      
-      let processedCount = 0;
-      for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          const compressed = await compressImage(value, 2048, 0.75);
-          compressedFormData.append(key, compressed, `${key}.jpg`);
-          processedCount++;
-          setUploadProgress(5 + (processedCount / fileCount * 25)); // 5% to 30% for compression
-        }
-      }
-      
-      const updatedUser = await authService.submitDocuments(compressedFormData, (progress) => {
-        setUploadProgress(30 + (progress * 0.7)); // 30% to 100% for actual upload
-      });
-      setUser(updatedUser);
-      
-      // Refresh document status
-      const updatedDocStatus = await authService.fetchDocumentStatus();
-      setDocStatus(updatedDocStatus);
-      
-      setUploadSuccess(true);
-      toast.success(t("providerProfile.docsSubmitted"));
-      setTimeout(() => {
-        setUploadSuccess(false);
-        setUploadProgress(0);
-      }, 3000);
-    } catch (e: any) {
-      toast.error(formatApiError(e, t));
-      setUploadProgress(0);
-    } finally {
-      setSaving(false);
-    }
-  };
+
 
   return (
     <DashboardLayout>
@@ -446,212 +346,16 @@ const ProviderProfile = () => {
           </form>
         </div>
 
-        {/* Verification Documents – only for UNVERIFIED providers */}
-        {user.verification_status === "UNVERIFIED" && (
-          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-6 dark:border-orange-800 dark:bg-orange-900/10">
-            <h3 className="font-heading text-base font-semibold text-foreground flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-              {t("providerProfile.submitDocs")}
-            </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("providerProfile.submitDocsDesc")}
-            </p>
-            <form onSubmit={handleDocumentSubmit} className="mt-5 space-y-4">
-              {user.role === "HOST" ? (
-                <>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">{t("providerProfile.nationalId")}</label>
-                    <input
-                      type="text"
-                      maxLength={18}
-                      value={nationalId}
-                      onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ""))}
-                      placeholder={t("providerProfile.idNumberPlaceholder")}
-                      className="mt-2 w-full rounded-xl border bg-background px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium text-foreground flex items-center justify-between">
-                        {t("providerProfile.idRecto")}
-                        {docStatus?.submitted?.national_id_recto && (
-                          <a 
-                            href={authService.resolveMediaUrl(docStatus.submitted.national_id_recto) || "#"} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20 flex items-center gap-1 hover:bg-primary/20 transition-colors"
-                          >
-                            <CheckCircle2 className="h-2.5 w-2.5" /> {t("providerProfile.view")}
-                          </a>
-                        )}
-                      </label>
-                      <label className="mt-2 flex h-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-background transition-colors hover:border-primary/50">
-                        {idRecto ? (
-                          <span className="text-sm font-medium text-primary">{idRecto.name}</span>
-                        ) : (
-                          <>
-                            <Upload className="h-6 w-6 text-muted-foreground" />
-                            <span className="mt-1 text-xs text-muted-foreground">{t("providerProfile.uploadImage")}</span>
-                          </>
-                        )}
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => setIdRecto(e.target.files?.[0] || null)} />
-                      </label>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground flex items-center justify-between">
-                        {t("providerProfile.idVerso")}
-                        {docStatus?.submitted?.national_id_verso && (
-                          <a 
-                            href={authService.resolveMediaUrl(docStatus.submitted.national_id_verso) || "#"} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20 flex items-center gap-1 hover:bg-primary/20 transition-colors"
-                          >
-                            <CheckCircle2 className="h-2.5 w-2.5" /> {t("providerProfile.view")}
-                          </a>
-                        )}
-                      </label>
-                      <label className="mt-2 flex h-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-background transition-colors hover:border-primary/50">
-                        {idVerso ? (
-                          <span className="text-sm font-medium text-primary">{idVerso.name}</span>
-                        ) : (
-                          <>
-                            <Upload className="h-6 w-6 text-muted-foreground" />
-                            <span className="mt-1 text-xs text-muted-foreground">{t("providerProfile.uploadImage")}</span>
-                          </>
-                        )}
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => setIdVerso(e.target.files?.[0] || null)} />
-                      </label>
-                    </div>
-                    </div>
-                </>
-              ) : (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium text-foreground">NRC (Numéro de Registre de Commerce)</label>
-                      <input
-                        type="text"
-                        value={nrc}
-                        onChange={(e) => setNrc(e.target.value)}
-                        placeholder="Ex: 22A1234567-00/16"
-                        className="mt-2 w-full rounded-xl border bg-background px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground">NIF (Numéro d'Identification Fiscale)</label>
-                      <input
-                        type="text"
-                        maxLength={15}
-                        value={nif}
-                        onChange={(e) => setNif(e.target.value.replace(/\D/g, ""))}
-                        placeholder="15-digit NIF"
-                        className="mt-2 w-full rounded-xl border bg-background px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium text-foreground flex items-center justify-between">
-                        NRC Image
-                        {docStatus?.submitted?.nrc_image && (
-                          <a 
-                            href={authService.resolveMediaUrl(docStatus.submitted.nrc_image) || "#"} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20 flex items-center gap-1 hover:bg-primary/20 transition-colors"
-                          >
-                            <CheckCircle2 className="h-2.5 w-2.5" /> {t("providerProfile.view") || "View"}
-                          </a>
-                        )}
-                      </label>
-                      <label className="mt-2 flex h-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-background transition-colors hover:border-primary/50">
-                        {nrcImage ? (
-                          <span className="text-sm font-medium text-primary">{nrcImage.name}</span>
-                        ) : (
-                          <>
-                            <Upload className="h-6 w-6 text-muted-foreground" />
-                            <span className="mt-1 text-xs text-muted-foreground">{t("providerProfile.uploadImage")}</span>
-                          </>
-                        )}
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => setNrcImage(e.target.files?.[0] || null)} />
-                      </label>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground flex items-center justify-between">
-                        NIF Image
-                        {docStatus?.submitted?.nif_image && (
-                          <a 
-                            href={authService.resolveMediaUrl(docStatus.submitted.nif_image) || "#"} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20 flex items-center gap-1 hover:bg-primary/20 transition-colors"
-                          >
-                            <CheckCircle2 className="h-2.5 w-2.5" /> {t("providerProfile.view") || "View"}
-                          </a>
-                        )}
-                      </label>
-                      <label className="mt-2 flex h-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-background transition-colors hover:border-primary/50">
-                        {nifImage ? (
-                          <span className="text-sm font-medium text-primary">{nifImage.name}</span>
-                        ) : (
-                          <>
-                            <Upload className="h-6 w-6 text-muted-foreground" />
-                            <span className="mt-1 text-xs text-muted-foreground">{t("providerProfile.uploadImage")}</span>
-                          </>
-                        )}
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => setNifImage(e.target.files?.[0] || null)} />
-                      </label>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className="text-sm font-medium text-foreground mb-2 block">{t("register.hostType")}</label>
-                    <div className="flex space-x-6 rtl:space-x-reverse">
-                      <label className="flex items-center gap-2 cursor-pointer group">
-                        <input 
-                          type="radio" 
-                          name="host_type" 
-                          value="OWNER" 
-                          checked={hostType === "OWNER"} 
-                          className="w-4 h-4 accent-primary"
-                          onChange={() => setHostType("OWNER")}
-                        />
-                        <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{t("register.propertyOwner")}</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer group">
-                        <input 
-                          type="radio" 
-                          name="host_type" 
-                          value="AGENT" 
-                          checked={hostType === "AGENT"} 
-                          className="w-4 h-4 accent-primary"
-                          onChange={() => setHostType("AGENT")}
-                        />
-                        <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{t("register.agent")}</span>
-                      </label>
-                    </div>
-                  </div>
-                </>
-              )}
-              <Button type="submit" className="w-full rounded-xl" disabled={saving}>
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t("providerProfile.submitForReview")}
-              </Button>
-            </form>
-          </div>
-        )}
+
 
         {/* Pending status notice */}
-        {user.verification_status === "PENDING" && (
+        {(user.verification_status === "PENDING" || user.verification_status === "UNVERIFIED") && (
           <div className="flex items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-5 dark:border-orange-800 dark:bg-orange-900/10">
             <Clock className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
             <div>
-              <p className="font-semibold text-foreground">{t("providerProfile.docsUnderReview")}</p>
+              <p className="font-semibold text-foreground">{t("providerProfile.pendingReview")}</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {t("providerProfile.docsUnderReviewDesc")}
+                Your account is being reviewed by our team. This usually takes 24–48 hours.
               </p>
             </div>
           </div>

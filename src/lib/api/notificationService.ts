@@ -26,7 +26,7 @@ export const notificationService = {
     const token = authService.getAccessToken();
     if (!token) throw new Error("Authentication required");
 
-    const query = params 
+    const query = params
       ? "?" + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString()
       : "";
 
@@ -35,6 +35,12 @@ export const notificationService = {
         Authorization: `Bearer ${token}`,
       },
     });
+
+    if (response.status === 401) {
+      // Token expired, try to refresh
+      await authService.refresh();
+      return this.fetchNotifications(params);
+    }
 
     if (!response.ok) {
       throw new Error("Failed to fetch notifications");
@@ -50,6 +56,12 @@ export const notificationService = {
         Authorization: `Bearer ${token}`,
       },
     });
+
+    if (response.status === 401) {
+      // Token expired, try to refresh
+      await authService.refresh();
+      return this.getNotificationDetails(id);
+    }
 
     if (!response.ok) {
       throw new Error("Failed to fetch notification details");
@@ -67,6 +79,12 @@ export const notificationService = {
       },
     });
 
+    if (response.status === 401) {
+      // Token expired, try to refresh
+      await authService.refresh();
+      return this.markAsRead(id);
+    }
+
     if (!response.ok) {
       throw new Error("Failed to mark notification as read");
     }
@@ -81,6 +99,12 @@ export const notificationService = {
       },
     });
 
+    if (response.status === 401) {
+      // Token expired, try to refresh
+      await authService.refresh();
+      return this.markAllAsRead();
+    }
+
     if (!response.ok) {
       throw new Error("Failed to mark all notifications as read");
     }
@@ -94,6 +118,12 @@ export const notificationService = {
         Authorization: `Bearer ${token}`,
       },
     });
+
+    if (response.status === 401) {
+      // Token expired, try to refresh
+      await authService.refresh();
+      return this.deleteNotification(id);
+    }
 
     if (!response.ok) {
       throw new Error("Failed to delete notification");
@@ -118,6 +148,16 @@ export const notificationService = {
       }),
     });
 
+    if (response.status === 401) {
+      // Token expired, try to refresh
+      try {
+        await authService.refresh();
+        return this.registerFCMToken(registrationId, deviceType);
+      } catch (e) {
+        console.error("FCM Token registration failed after refresh");
+      }
+    }
+
     if (!response.ok) {
       console.error("FCM Token registration failed");
     }
@@ -135,6 +175,16 @@ export const notificationService = {
         registration_id: registrationId,
       }),
     });
+
+    if (response.status === 401) {
+      // Token expired, try to refresh
+      try {
+        await authService.refresh();
+        return this.unregisterFCMToken(registrationId);
+      } catch (e) {
+        console.error("FCM Token unregistration failed after refresh");
+      }
+    }
 
     if (!response.ok) {
       console.error("FCM Token unregistration failed");

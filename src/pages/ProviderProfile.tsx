@@ -151,7 +151,8 @@ const ProviderProfile = () => {
         setUploadProgress(30 + (progress * 0.7)); // Scale progress from 30% to 100%
       });
       setUser(data);
-      setAvatarPreview(authService.resolveMediaUrl(data.pfp));
+      // Use cache buster for avatar to ensure fresh load on next render
+      setAvatarPreview(authService.resolveMediaUrl(data.pfp, true));
       setUploadSuccess(true);
       toast.success(t("providerProfile.profileUpdated"));
       setEditMode(false);
@@ -161,6 +162,7 @@ const ProviderProfile = () => {
         setUploadProgress(0);
       }, 3000);
     } catch (e: any) {
+      console.error("Profile update error:", e);
       toast.error(formatApiError(e, t));
       setUploadProgress(0);
     } finally {
@@ -325,7 +327,7 @@ const ProviderProfile = () => {
                     setFirstName(user.first_name);
                     setLastName(user.last_name);
                     setPhone(user.phone);
-                    setAvatarPreview(authService.resolveMediaUrl(user.pfp));
+                    setAvatarPreview(authService.resolveMediaUrl(user.pfp, true));
                     setAvatarFile(null);
                     setEditMode(false);
                 }}>

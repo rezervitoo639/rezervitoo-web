@@ -1,73 +1,112 @@
-# Welcome to your Lovable project
+# RizerVitoo Web Application
 
-## Project info
+A modern React-based web platform for accommodation bookings and reservations management.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## ✨ Features
 
-## How can I edit this code?
+- **User Authentication** - Email/password and Google OAuth login
+- **Provider Management** - Register, manage listings, and handle bookings
+- **Real-time Notifications** - Push notifications with auto-refresh
+- **Image Management** - Avatar editing with cropping and compression
+- **Multi-language Support** - English, French, and Arabic (with RTL support)
+- **Responsive Design** - Optimized for mobile and desktop
 
-There are several ways of editing your application.
+## 🚀 Getting Started
 
-**Use Lovable**
+### Requirements
+- Node.js 16+
+- npm/yarn
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Installation
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+cd rezervitoo-web
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app will be available at `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📚 Documentation
 
-**Use GitHub Codespaces**
+- **[PROJECT_SETUP.md](./PROJECT_SETUP.md)** - Complete setup guide, API patterns, and troubleshooting
+- **[RizerVitoo Support API Documentation.md](./RizerVitoo%20Support%20API%20Documentation.md)** - Reviews, reports, wishlists
+- **[RizerVitoo Listings API Documentation.md](./RizerVitoo%20Listings%20API%20Documentation.md)** - Listings management
+- **[RizerVitoo Bookings API Documentation.md](./RizerVitoo%20Bookings%20API%20Documentation.md)** - Bookings workflow
+- **[RezerVitoo Mobile API Documentation.md](./RezerVitoo%20Mobile%20API%20Documentation.md)** - Users and authentication
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🏗️ Built With
 
-## What technologies are used for this project?
+- **Vite** - Next generation frontend tooling
+- **React** - UI library
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Utility-first CSS
+- **shadcn/ui** - High-quality React components
+- **Sonner** - Toast notifications
+- **Lucide Icons** - Beautiful icons
+- **date-fns** - Date manipulation
 
-This project is built with:
+## 📦 Project Structure
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+src/
+├── pages/          # Full page components
+├── components/     # Reusable UI components
+├── lib/
+│   ├── api/       # API service layer
+│   └── utils/     # Utility functions
+├── i18n/          # Internationalization
+└── types/         # TypeScript definitions
+```
 
-## How can I deploy this project?
+## 🔧 Available Scripts
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+```bash
+npm run dev       # Start development server
+npm run build     # Build for production
+npm run preview   # Preview production build
+npm run lint      # Run ESLint
+```
 
-## Can I connect a custom domain to my Lovable project?
+## 🌐 Environment Variables
 
-Yes, you can!
+```
+VITE_API_BASE_URL=https://api.rezervitoo.com
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🔑 Key Features Explained
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Provider Profile
+- Edit personal information (name, phone, email)
+- Upload and crop avatar image
+- View verification status
+- No document submission required (admins handle verification)
+
+### Notifications
+- Bell icon shows unread count
+- Auto-refresh token on expiration
+- Mark as read / Delete notifications
+- 2-minute polling interval
+
+### Image Uploading
+- Crop images with preview
+- Auto-compress (up to 800px width)
+- Cache-busting for fresh display
+- Progress tracking during upload
+
+## 🤝 Contributing
+
+1. Clone the repository
+2. Create a feature branch
+3. Make your changes
+4. Commit and push
+5. Open a pull request
+
+## 📄 License
+
+This project is proprietary and confidential.
+
+---
+
+For detailed setup and troubleshooting, see [PROJECT_SETUP.md](./PROJECT_SETUP.md)

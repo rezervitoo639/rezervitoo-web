@@ -65,12 +65,14 @@ export const authService = {
   },
 
   /** Resolve media URLs (handle relative vs absolute) */
-  resolveMediaUrl(path: string | null | undefined): string | null {
+  resolveMediaUrl(path: string | null | undefined, cacheBust: boolean = false): string | null {
     if (!path) return null;
     if (path.startsWith("http") || path.startsWith("data:")) return path;
     // Remove leading slash if present
     const cleanPath = path.startsWith("/") ? path.slice(1) : path;
-    return `${API_BASE_URL}/${cleanPath}`;
+    const url = `${API_BASE_URL}/${cleanPath}`;
+    // Add cache buster for profile pictures to ensure fresh load
+    return cacheBust ? `${url}?t=${Date.now()}` : url;
   },
 
   async login(credentials: any): Promise<AuthTokens> {

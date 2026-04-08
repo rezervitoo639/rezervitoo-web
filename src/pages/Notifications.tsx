@@ -225,7 +225,7 @@ const Notifications = () => {
                                 onClick={() => handleMarkAsRead(notification.id)}
                                 className="cursor-pointer"
                               >
-                                <Check className="mr-2 h-4 w-4" /> Mark as read
+                                <Check className="mr-2 h-4 w-4" /> {t("notifications.markAsRead")}
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem 

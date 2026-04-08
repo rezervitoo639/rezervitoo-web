@@ -30,6 +30,14 @@ interface NotificationWsMessage {
   timestamp?: string;
 }
 
+const inferRealtimeNotificationType = (data: any): string => {
+  if (!data || typeof data !== "object") return "notification";
+  if (data.review_id) return "new_review";
+  if (data.booking_id && data.guest_email) return "new_booking";
+  if (data.booking_id && data.status) return "booking_update";
+  return "notification";
+};
+
 const mapNotification = (item: any): AppNotification => ({
   id: String(item.id ?? `${item.type || "notification"}-${item.created_at || item.timestamp || Date.now()}`),
   title: item.title || item.message || "Notification",
@@ -290,7 +298,7 @@ export const notificationService = {
 
           if (msg.type === "notification") {
             const notification = mapNotification({
-              type: msg.data?.type || "notification",
+              type: msg.data?.type || inferRealtimeNotificationType(msg.data),
               message: msg.message || "New notification",
               data: msg.data,
               timestamp: msg.timestamp,

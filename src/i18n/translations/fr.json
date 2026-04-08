@@ -740,13 +740,12 @@
   "notifications.emptyDesc": "Nous vous informerons dès que quelque chose d'important se produira.",
   "notifications.viewAll": "Voir toutes les notifications",
   "notifications.new": "Nouveau",
+  "notifications.markAsRead": "Marquer comme lu",
   "notifications.delete": "Supprimer la notification",
-  "notifications.booking_created": "Nouvelle demande de réservation",
-  "notifications.booking_accepted": "Réservation acceptée",
-  "notifications.booking_rejected": "Réservation refusée",
-  "notifications.booking_cancelled": "Réservation annulée",
-  "notifications.account_verified": "Compte vérifié",
-  "notifications.account_rejected": "Vérification du compte refusée",
+  "notifications.booking_created": "Réservation soumise",
+  "notifications.booking_update": "Mise à jour de réservation",
+  "notifications.new_booking": "Nouvelle demande de réservation",
+  "notifications.account_approved": "Compte approuvé",
   "notifications.new_review": "Nouvel avis reçu",
   "notifications.fcm_registered": "Appareil enregistré pour les notifications push"
 }

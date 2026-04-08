@@ -720,13 +720,12 @@
   "notifications.emptyDesc": "We'll notify you when something important happens.",
   "notifications.viewAll": "View all notifications",
   "notifications.new": "New",
+  "notifications.markAsRead": "Mark as read",
   "notifications.delete": "Delete notification",
-  "notifications.booking_created": "New Booking Request",
-  "notifications.booking_accepted": "Booking Accepted",
-  "notifications.booking_rejected": "Booking Rejected",
-  "notifications.booking_cancelled": "Booking Cancelled",
-  "notifications.account_verified": "Account Verified",
-  "notifications.account_rejected": "Account Verification Rejected",
+  "notifications.booking_created": "Booking Submitted",
+  "notifications.booking_update": "Booking Updated",
+  "notifications.new_booking": "New Booking Request",
+  "notifications.account_approved": "Account Approved",
   "notifications.new_review": "New Review Received",
   "notifications.fcm_registered": "Device registered for push notifications"
 }

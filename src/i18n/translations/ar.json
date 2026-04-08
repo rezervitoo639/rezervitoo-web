@@ -729,13 +729,12 @@
   "notifications.emptyDesc": "سنقوم بإشعارك عند حدوث شيء مهم.",
   "notifications.viewAll": "عرض جميع الإشعارات",
   "notifications.new": "جديد",
+  "notifications.markAsRead": "تحديد كمقروء",
   "notifications.delete": "حذف الإشعار",
-  "notifications.booking_created": "طلب حجز جديد",
-  "notifications.booking_accepted": "تم قبول الحجز",
-  "notifications.booking_rejected": "تم رفض الحجز",
-  "notifications.booking_cancelled": "تم إلغاء الحجز",
-  "notifications.account_verified": "تم توثيق الحساب",
-  "notifications.account_rejected": "تم رفض توثيق الحساب",
+  "notifications.booking_created": "تم إرسال الحجز",
+  "notifications.booking_update": "تحديث الحجز",
+  "notifications.new_booking": "طلب حجز جديد",
+  "notifications.account_approved": "تمت الموافقة على الحساب",
   "notifications.new_review": "تم استلام تقييم جديد",
   "notifications.fcm_registered": "تم تسجيل الجهاز لاستقبال الإشعارات"
 }

@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { 
   notificationService, 
-  AppNotification 
+  AppNotification
 } from "@/lib/api/notificationService";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
@@ -55,7 +55,17 @@ const NotificationDropdown = () => {
     fetchNotifications();
     // Poll for new notifications every 2 minutes
     const interval = setInterval(fetchNotifications, 120000);
-    return () => clearInterval(interval);
+
+    const disconnect = notificationService.connectToRealtimeNotifications((incoming) => {
+      setNotifications((prev) => [incoming, ...prev].slice(0, 5));
+      setUnreadCount((prev) => prev + 1);
+      toast.message(incoming.message || t("notifications.title"));
+    });
+
+    return () => {
+      clearInterval(interval);
+      disconnect();
+    };
   }, []);
 
   const handleMarkAsRead = async (id: string) => {

@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { 
   notificationService, 
-  AppNotification 
+  AppNotification,
+  NOTIFICATION_EVENT,
 } from "@/lib/api/notificationService";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
@@ -66,6 +67,26 @@ const Notifications = () => {
 
   useEffect(() => {
     fetchNotifications();
+  }, []);
+
+  useEffect(() => {
+    const handleRealtimeEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<AppNotification>;
+      const incoming = customEvent.detail;
+      if (!incoming) return;
+
+      setNotifications((prev) => {
+        const exists = prev.some((item) => item.id === incoming.id);
+        if (exists) return prev;
+        return [incoming, ...prev];
+      });
+      setUnreadCount((prev) => prev + 1);
+    };
+
+    window.addEventListener(NOTIFICATION_EVENT, handleRealtimeEvent as EventListener);
+    return () => {
+      window.removeEventListener(NOTIFICATION_EVENT, handleRealtimeEvent as EventListener);
+    };
   }, []);
 
   const handleMarkAsRead = async (id: string) => {
@@ -204,7 +225,7 @@ const Notifications = () => {
                                 onClick={() => handleMarkAsRead(notification.id)}
                                 className="cursor-pointer"
                               >
-                                <Check className="mr-2 h-4 w-4" /> {t("notifications.markAllAsRead")}
+                                <Check className="mr-2 h-4 w-4" /> Mark as read
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem 

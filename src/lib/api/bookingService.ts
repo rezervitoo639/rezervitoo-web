@@ -146,6 +146,38 @@ export const bookingService = {
     return response.json();
   },
 
+  /** Cancel own booking (User) */
+  async cancelBooking(id: number): Promise<{ status: string }> {
+    const token = authService.getAccessToken();
+    const headers = {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+
+    // Primary expected action endpoint
+    let response = await fetch(`${BASE_URL}/${id}/cancel/`, {
+      method: "POST",
+      headers,
+    });
+
+    // Fallback for backends exposing partial update only
+    if (response.status === 404 || response.status === 405) {
+      response = await fetch(`${BASE_URL}/${id}/`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
+    }
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Failed to cancel booking");
+    }
+
+    const data = await response.json().catch(() => ({}));
+    return data?.status ? data : { status: "cancelled" };
+  },
+
   /** Fetch blocked/unavailable ranges for a listing */
   async fetchListingUnavailableDates(listingId: number | string): Promise<UnavailableDateRange[]> {
     const token = authService.getAccessToken();

@@ -21,9 +21,9 @@ const ForgotPassword = () => {
     try {
       await authService.requestPasswordReset(email);
       setIsSuccess(true);
-      toast.success("Reset link sent if email exists!");
+      toast.success(t("forgotPassword.successToast"));
     } catch (error: any) {
-      toast.error(error.message || "Something went wrong. Please try again.");
+      toast.error(error.message || t("errors.common.somethingWentWrong"));
     } finally {
       setIsSubmitting(false);
     }

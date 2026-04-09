@@ -22,7 +22,7 @@ const MyListings = () => {
         setListings(data.results);
       } catch (error) {
         console.error("Failed to load my listings", error);
-        toast.error("Failed to load your listings");
+        toast.error(t("errors.listings.loadMine"));
       } finally {
         setLoading(false);
       }

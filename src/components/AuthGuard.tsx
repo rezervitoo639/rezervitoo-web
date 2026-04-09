@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { authService } from "@/lib/api/authService";
 import { toast } from "sonner";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -11,6 +12,7 @@ interface AuthGuardProps {
 const AuthGuard = ({ children, allowedAccountType }: AuthGuardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
   const [isVerifying, setIsVerifying] = useState(true);
   const [authorized, setAuthorized] = useState(false);
 
@@ -21,7 +23,7 @@ const AuthGuard = ({ children, allowedAccountType }: AuthGuardProps) => {
         let userData = authService.getUserData();
 
         if (!token) {
-          toast.error("Please login to access this page.");
+          toast.error(t("errors.auth.loginRequired"));
           navigate("/login", { state: { from: location.pathname } });
           return;
         }
@@ -31,7 +33,7 @@ const AuthGuard = ({ children, allowedAccountType }: AuthGuardProps) => {
             userData = await authService.fetchMe();
           } catch (e) {
             authService.clearAuth();
-            toast.error("Session expired. Please login again.");
+            toast.error(t("errors.auth.sessionExpired"));
             navigate("/login", { state: { from: location.pathname } });
             return;
           }
@@ -45,13 +47,13 @@ const AuthGuard = ({ children, allowedAccountType }: AuthGuardProps) => {
           const isProvider = userType === "PROVIDER";
           
           if (allowedAccountType === "USER" && !isUser) {
-            toast.error("Access denied. This page is only for customers.");
+            toast.error(t("errors.auth.customerOnly"));
             navigate("/");
             return;
           }
           
           if (allowedAccountType === "PROVIDER" && !isProvider) {
-            toast.error("Access denied. This page is only for providers.");
+            toast.error(t("errors.auth.providerOnly"));
             if (isUser) navigate("/");
             else navigate("/dashboard");
             return;
@@ -65,7 +67,7 @@ const AuthGuard = ({ children, allowedAccountType }: AuthGuardProps) => {
     };
 
     verifyAuth();
-  }, [allowedAccountType, navigate, location.pathname]);
+  }, [allowedAccountType, navigate, location.pathname, t]);
 
   if (isVerifying) {
     return (

@@ -22,13 +22,23 @@ const UserBookings = () => {
         const data = await bookingService.fetchBookings();
         setBookings(data.results);
       } catch (error) {
-        toast.error("Failed to load bookings");
+        toast.error(t("errors.bookings.load"));
       } finally {
         setLoading(false);
       }
     };
     loadBookings();
-  }, []);
+  }, [t]);
+
+  const handleCancelBooking = async (id: number) => {
+    try {
+      await bookingService.cancelBooking(id);
+      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: "CANCELLED" } : b)));
+      toast.success(t("userBookings.successCancelled"));
+    } catch (error: any) {
+      toast.error(error.message || t("errors.bookings.cancel"));
+    }
+  };
 
   const statusConfig: Record<string, { label: string; icon: React.ElementType; className: string }> = {
     PENDING:   { label: t("common.pending"),   icon: Clock,         className: "text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800" },
@@ -145,6 +155,16 @@ const UserBookings = () => {
                           {t("userBookings.bookingId")} #{booking.id} · {new Date(booking.created_at).toLocaleDateString(language === "ar" ? "ar-DZ" : language === "fr" ? "fr-FR" : "en-GB")}
                         </span>
                         <div className="flex gap-2">
+                          {booking.status === "PENDING" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl text-xs"
+                              onClick={() => handleCancelBooking(booking.id)}
+                            >
+                              {t("userBookings.cancel")}
+                            </Button>
+                          )}
                           {booking.status === "COMPLETED" && (
                             <Link to={`/listing/${booking.listing_details.id}?reviewBookingId=${booking.id}`}>
                               <Button size="sm" variant="outline" className="rounded-xl text-xs">{t("userBookings.review")}</Button>

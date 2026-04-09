@@ -59,7 +59,7 @@ const Notifications = () => {
       });
       setUnreadCount(unreadData.count);
     } catch (error) {
-      toast.error("Failed to fetch notifications");
+      toast.error(t("errors.notifications.fetch"));
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ const Notifications = () => {
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      toast.error("Error");
+      toast.error(t("errors.notifications.markRead"));
     }
   };
 
@@ -109,7 +109,7 @@ const Notifications = () => {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (error) {
-      toast.error("Failed to delete");
+      toast.error(t("errors.notifications.delete"));
     }
   };
 
@@ -120,7 +120,7 @@ const Notifications = () => {
       setUnreadCount(0);
       toast.success(t("notifications.markAllAsRead"));
     } catch (error) {
-      toast.error("Error");
+      toast.error(t("errors.notifications.markAll"));
     }
   };
 

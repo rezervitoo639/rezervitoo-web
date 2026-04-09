@@ -115,7 +115,7 @@ const Listings = () => {
         setTotalCount(data.count);
       } catch (error) {
         console.error("Failed to load listings", error);
-        toast.error(t("common.error") || "Failed to load listings");
+        toast.error(t("errors.listings.load"));
       } finally {
         setLoading(false);
       }

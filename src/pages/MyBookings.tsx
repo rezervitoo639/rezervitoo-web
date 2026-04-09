@@ -20,13 +20,13 @@ const MyBookings = () => {
         const data = await bookingService.fetchBookings();
         setBookings(data.results);
       } catch (error) {
-        toast.error("Failed to load bookings");
+        toast.error(t("errors.bookings.load"));
       } finally {
         setLoading(false);
       }
     };
     loadBookings();
-  }, []);
+  }, [t]);
 
 
   const statusConfig: Record<string, { label: string; icon: React.ElementType; className: string }> = {
@@ -50,7 +50,7 @@ const MyBookings = () => {
       setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: "ACCEPTED" } : b));
       toast.success(t("myBookingsProvider.successAccepted"));
     } catch (error) {
-      toast.error("Failed to accept booking");
+      toast.error(t("errors.bookings.accept"));
     }
   };
 
@@ -60,7 +60,7 @@ const MyBookings = () => {
       setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: "REJECTED" } : b));
       toast.error(t("myBookingsProvider.successRejected"));
     } catch (error) {
-      toast.error("Failed to reject booking");
+      toast.error(t("errors.bookings.reject"));
     }
   };
 

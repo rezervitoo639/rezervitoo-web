@@ -129,7 +129,7 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
         return;
       }
       if (noCapacityForSelectedSchedule) {
-        toast.error("No spots available for this departure date.");
+        toast.error(t("errors.bookings.noSpots"));
         return;
       }
     }
@@ -297,11 +297,11 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
                   />
                 </div>
                 {loadingBlockedDates && (
-                  <p className="text-xs text-muted-foreground">Loading unavailable dates...</p>
+                  <p className="text-xs text-muted-foreground">{t("bookingModal.loadingUnavailableDates")}</p>
                 )}
                 {!loadingBlockedDates && blockedRanges.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Unavailable dates are disabled on the calendar.
+                    {t("bookingModal.unavailableDatesDisabled")}
                   </p>
                 )}
               </div>

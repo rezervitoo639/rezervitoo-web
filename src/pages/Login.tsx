@@ -51,14 +51,14 @@ const Login = () => {
                 await authService.resendVerification(data.email);
                 toast.success("Verification email resent!");
               } catch (e: any) {
-                toast.error(e.message || "Failed to resend");
+                toast.error(e.message || t("errors.auth.resendFailed"));
               }
             }
           },
           duration: 10000,
         });
       } else {
-        toast.error(error.message || "Login failed. Please check your credentials.");
+        toast.error(error.message || t("errors.auth.loginFailed"));
       }
     }
   };
@@ -143,11 +143,11 @@ const Login = () => {
                       navigate("/"); 
                     }
                   } catch (error: any) {
-                    toast.error(error.message || "Google Login failed");
+                    toast.error(error.message || t("errors.auth.googleLoginFailed"));
                   }
                 }}
                 onError={() => {
-                  toast.error("Google Login Failed");
+                  toast.error(t("errors.auth.googleLoginFailed"));
                 }}
               />
             </div>

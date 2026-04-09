@@ -76,7 +76,7 @@ const NotificationDropdown = () => {
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      toast.error("Failed to mark notification as read");
+      toast.error(t("errors.notifications.markRead"));
     }
   };
 
@@ -87,7 +87,7 @@ const NotificationDropdown = () => {
       // Re-fetch to keep count accurate if needed
       fetchNotifications();
     } catch (error) {
-      toast.error("Failed to delete notification");
+      toast.error(t("errors.notifications.delete"));
     }
   };
 
@@ -98,7 +98,7 @@ const NotificationDropdown = () => {
       setUnreadCount(0);
       toast.success(t("notifications.markAllAsRead"));
     } catch (error) {
-      toast.error("Failed to mark all as read");
+      toast.error(t("errors.notifications.markAll"));
     }
   };
 

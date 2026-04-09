@@ -94,7 +94,7 @@ const ListingDetails = () => {
         }
       } catch (error) {
         console.error("Failed to load listing details", error);
-        toast.error(t("common.error") || "Failed to load listing details");
+        toast.error(t("errors.listings.details"));
       } finally {
         setLoading(false);
       }
@@ -126,7 +126,7 @@ const ListingDetails = () => {
       setWishlisted(res.wishlisted);
       toast.success(res.wishlisted ? t("listingDetails.wishlistAdded") : t("listingDetails.wishlistRemoved"));
     } catch (error) {
-      toast.error("Failed to update wishlist");
+      toast.error(t("errors.listings.wishlist"));
     }
   };
 

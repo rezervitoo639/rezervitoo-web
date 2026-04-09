@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X, CalendarDays, Users, User, Phone, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { authService } from "@/lib/api/authService";
 import { bookingService } from "@/lib/api/bookingService";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 
 interface BookingModalProps {
   listing: {
@@ -12,6 +14,7 @@ interface BookingModalProps {
     title: string;
     price: number;
     listing_type: string;
+    max_guests?: number;
     selectedSchedule?: { id?: number; start_date: string; max_capacity: number; spots_booked: number };
   };
   onClose: () => void;
@@ -24,6 +27,9 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
   const [guestPhone, setGuestPhone] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [blockedRanges, setBlockedRanges] = useState<{ from: Date; to: Date }[]>([]);
+  const [loadingBlockedDates, setLoadingBlockedDates] = useState(false);
   const [guests, setGuests] = useState(1);
   const [booked, setBooked] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,6 +48,55 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
   }, []);
 
   const isPackage = listing.listing_type === "TRAVEL_PACKAGE";
+  const availableSpotsForSchedule = (listing.selectedSchedule?.max_capacity || 0) - (listing.selectedSchedule?.spots_booked || 0);
+  const noCapacityForSelectedSchedule = isPackage && !!listing.selectedSchedule && availableSpotsForSchedule <= 0;
+  const maxGuests = isPackage
+    ? Math.max(1, availableSpotsForSchedule)
+    : Math.max(1, listing.max_guests || 20);
+
+  useEffect(() => {
+    if (isPackage) return;
+
+    const loadBlockedDates = async () => {
+      setLoadingBlockedDates(true);
+      try {
+        const unavailable = await bookingService.fetchListingUnavailableDates(listing.id);
+        const ranges = unavailable
+          .filter((item) => item.start_date && item.end_date)
+          .map((item) => ({ from: new Date(item.start_date), to: new Date(item.end_date) }));
+        setBlockedRanges(ranges);
+      } catch (error) {
+        setBlockedRanges([]);
+      } finally {
+        setLoadingBlockedDates(false);
+      }
+    };
+
+    void loadBlockedDates();
+  }, [isPackage, listing.id]);
+
+  const disabledDays = useMemo(
+    () => [{ before: new Date() }, ...blockedRanges],
+    [blockedRanges],
+  );
+
+  useEffect(() => {
+    if (!dateRange?.from) {
+      setStartDate("");
+      setEndDate("");
+      return;
+    }
+
+    const format = (d: Date) => {
+      const year = d.getFullYear();
+      const month = `${d.getMonth() + 1}`.padStart(2, "0");
+      const day = `${d.getDate()}`.padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    setStartDate(format(dateRange.from));
+    setEndDate(dateRange.to ? format(dateRange.to) : "");
+  }, [dateRange]);
 
   const nights = !isPackage && startDate && endDate
     ? Math.max(0, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))
@@ -61,6 +116,10 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
     } else {
       if (!listing.selectedSchedule?.id) {
         toast.error(t("bookingModal.selectDate") || "Please select a departure date first");
+        return;
+      }
+      if (noCapacityForSelectedSchedule) {
+        toast.error("No spots available for this departure date.");
         return;
       }
     }
@@ -191,33 +250,27 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
 
             {/* Date fields – only for accommodation */}
             {!isPackage && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    <CalendarDays className="h-3.5 w-3.5" /> {t("bookingModal.checkIn")}
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    min={new Date().toISOString().split("T")[0]}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    required
+              <div className="space-y-3">
+                <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <CalendarDays className="h-3.5 w-3.5" /> {t("bookingModal.checkIn")} / {t("bookingModal.checkOut")}
+                </label>
+                <div className="rounded-xl border bg-background p-2">
+                  <Calendar
+                    mode="range"
+                    numberOfMonths={1}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    disabled={disabledDays}
                   />
                 </div>
-                <div>
-                  <label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    <CalendarDays className="h-3.5 w-3.5" /> {t("bookingModal.checkOut")}
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    min={startDate || new Date().toISOString().split("T")[0]}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    required
-                  />
-                </div>
+                {loadingBlockedDates && (
+                  <p className="text-xs text-muted-foreground">Loading unavailable dates...</p>
+                )}
+                {!loadingBlockedDates && blockedRanges.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Unavailable dates are disabled on the calendar.
+                  </p>
+                )}
               </div>
             )}
 
@@ -236,9 +289,13 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
               <input
                 type="number"
                 min={1}
-                max={20}
+                max={maxGuests}
                 value={guests}
-                onChange={(e) => setGuests(Number(e.target.value))}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (Number.isNaN(next)) return;
+                  setGuests(Math.min(maxGuests, Math.max(1, next)));
+                }}
                 className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -264,7 +321,7 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
               </div>
             )}
 
-            <Button type="submit" size="lg" className="w-full rounded-xl" disabled={loading}>
+            <Button type="submit" size="lg" className="w-full rounded-xl" disabled={loading || noCapacityForSelectedSchedule}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {t("bookingModal.confirm")}
             </Button>

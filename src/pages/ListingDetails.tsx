@@ -211,6 +211,7 @@ const ListingDetails = () => {
             title: listing.title, 
             price: parseFloat(listing.price), 
             listing_type: listing.listing_type,
+            max_guests: (listing as any).max_guests,
             selectedSchedule: listing.listing_type === "TRAVEL_PACKAGE" && selectedSchedule !== null && (listing as PackageListing).schedules
               ? (listing as PackageListing).schedules[selectedSchedule] 
               : undefined

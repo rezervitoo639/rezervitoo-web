@@ -47,6 +47,19 @@ export interface PaginatedResult<T> {
   results: T[];
 }
 
+export interface UnavailableDateRange {
+  id: number;
+  start_date: string;
+  end_date: string;
+  reason?: string;
+}
+
+const normalizeListResponse = <T>(payload: any): T[] => {
+  if (Array.isArray(payload)) return payload as T[];
+  if (Array.isArray(payload?.results)) return payload.results as T[];
+  return [];
+};
+
 export const bookingService = {
   /** List bookings (auth handled by interceptor or headers) */
   async fetchBookings(params?: Record<string, string | number | boolean>): Promise<PaginatedResult<Booking>> {
@@ -131,5 +144,21 @@ export const bookingService = {
     }
 
     return response.json();
-  }
+  },
+
+  /** Fetch blocked/unavailable ranges for a listing */
+  async fetchListingUnavailableDates(listingId: number | string): Promise<UnavailableDateRange[]> {
+    const token = authService.getAccessToken();
+    const response = await fetch(`${API_BASE_URL}/api/v1/listings/${listingId}/availability/`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Failed to fetch listing availability");
+    }
+
+    const data = await response.json();
+    return normalizeListResponse<UnavailableDateRange>(data);
+  },
 };

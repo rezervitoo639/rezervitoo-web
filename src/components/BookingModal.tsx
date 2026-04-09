@@ -80,6 +80,16 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
     [blockedRanges],
   );
 
+  const blockedStartDays = useMemo(
+    () => blockedRanges.map((range) => range.from),
+    [blockedRanges],
+  );
+
+  const blockedEndDays = useMemo(
+    () => blockedRanges.map((range) => range.to),
+    [blockedRanges],
+  );
+
   useEffect(() => {
     if (!dateRange?.from) {
       setStartDate("");
@@ -261,6 +271,29 @@ const BookingModal = ({ listing, onClose }: BookingModalProps) => {
                     selected={dateRange}
                     onSelect={setDateRange}
                     disabled={disabledDays}
+                    modifiers={{
+                      unavailable: blockedRanges,
+                      unavailable_start: blockedStartDays,
+                      unavailable_end: blockedEndDays,
+                    }}
+                    modifiersClassNames={{
+                      unavailable:
+                        "!bg-red-100 !text-red-700 hover:!bg-red-100",
+                      unavailable_start:
+                        "!bg-red-500 !text-white hover:!bg-red-500",
+                      unavailable_end:
+                        "!bg-red-500 !text-white hover:!bg-red-500",
+                    }}
+                    classNames={{
+                      selected:
+                        "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                      range_middle:
+                        "aria-selected:bg-primary/15 aria-selected:text-primary",
+                      range_start:
+                        "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                      range_end:
+                        "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                    }}
                   />
                 </div>
                 {loadingBlockedDates && (

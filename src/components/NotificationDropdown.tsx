@@ -16,9 +16,11 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ar, fr, enUS } from "date-fns/locale";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { getNotificationLink } from "@/lib/notificationRoutes";
 
 const NotificationDropdown = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -91,6 +93,22 @@ const NotificationDropdown = () => {
     }
   };
 
+  const handleNavigateFromNotification = async (notification: AppNotification) => {
+    const href = getNotificationLink(notification);
+    if (!href) return;
+    if (!notification.is_read) {
+      try {
+        await notificationService.markAsRead(notification.id);
+        setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n)));
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch {
+        // Still navigate; user can mark read later
+      }
+    }
+    navigate(href);
+    setOpen(false);
+  };
+
   const handleMarkAllRead = async () => {
     try {
       await notificationService.markAllAsRead();
@@ -146,12 +164,18 @@ const NotificationDropdown = () => {
                 </p>
               </div>
             ) : (
-              notifications.map((notification) => (
+              notifications.map((notification) => {
+                const href = getNotificationLink(notification);
+                return (
                 <div 
                   key={notification.id}
                   className={`group relative flex flex-col gap-1 border-b p-4 transition-colors hover:bg-muted/50 ${
                     !notification.is_read ? "bg-primary/5" : ""
-                  }`}
+                  } ${href ? "cursor-pointer" : ""}`}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest("button")) return;
+                    void handleNavigateFromNotification(notification);
+                  }}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
@@ -179,7 +203,10 @@ const NotificationDropdown = () => {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          onClick={() => handleMarkAsRead(notification.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleMarkAsRead(notification.id);
+                          }}
                         >
                           <Check className="h-3.5 w-3.5" />
                         </Button>
@@ -188,14 +215,18 @@ const NotificationDropdown = () => {
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDelete(notification.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDelete(notification.id);
+                        }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         </ScrollArea>

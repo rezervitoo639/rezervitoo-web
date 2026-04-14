@@ -5,13 +5,22 @@ import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { bookingService, Booking } from "@/lib/api/bookingService";
+import { useSearchParams } from "react-router-dom";
 
 const MyBookings = () => {
+  const [searchParams] = useSearchParams();
   const { t, language } = useLanguage();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [filter, setFilter] = useState("ALL");
+
+  useEffect(() => {
+    const bid = searchParams.get("bookingId");
+    if (!bid || !bookings.length) return;
+    const el = document.getElementById(`booking-${bid}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [searchParams, bookings]);
 
   useEffect(() => {
     const loadBookings = async () => {
@@ -112,7 +121,7 @@ const MyBookings = () => {
                 : null;
 
               return (
-                <div key={booking.id} className="overflow-hidden rounded-2xl border bg-card shadow-card">
+                <div id={`booking-${booking.id}`} key={booking.id} className="overflow-hidden rounded-2xl border bg-card shadow-card scroll-mt-24">
                   <div className="flex gap-0 sm:gap-4">
                     <div className="hidden sm:block shrink-0">
                       <img src={booking.listing_details.cover_image} alt={booking.listing_details.title} className="h-full w-28 object-cover" />

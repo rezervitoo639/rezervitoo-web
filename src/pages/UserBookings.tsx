@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { CalendarCheck, MapPin, Clock, CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
@@ -9,11 +9,19 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { bookingService, Booking } from "@/lib/api/bookingService";
 
 const UserBookings = () => {
+  const [searchParams] = useSearchParams();
   const { t, language } = useLanguage();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [filter, setFilter] = useState<string>("ALL");
+
+  useEffect(() => {
+    const bid = searchParams.get("bookingId");
+    if (!bid || !bookings.length) return;
+    const el = document.getElementById(`booking-${bid}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [searchParams, bookings]);
 
   useEffect(() => {
     const loadBookings = async () => {
@@ -104,7 +112,7 @@ const UserBookings = () => {
                 : null;
 
               return (
-                <div key={booking.id} className="overflow-hidden rounded-2xl border bg-card shadow-card">
+                <div id={`booking-${booking.id}`} key={booking.id} className="overflow-hidden rounded-2xl border bg-card shadow-card scroll-mt-24">
                   <div className="flex gap-0 sm:gap-4">
                     {/* Cover image */}
                     <Link to={`/listing/${booking.listing_details.id}`} className="hidden sm:block shrink-0">

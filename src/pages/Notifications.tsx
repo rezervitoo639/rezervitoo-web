@@ -33,8 +33,11 @@ import { ar, fr, enUS } from "date-fns/locale";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
+import { getNotificationLink } from "@/lib/notificationRoutes";
 
 const Notifications = () => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,6 +116,21 @@ const Notifications = () => {
     }
   };
 
+  const handleNavigateFromNotification = async (notification: AppNotification) => {
+    const href = getNotificationLink(notification);
+    if (!href) return;
+    if (!notification.is_read) {
+      try {
+        await notificationService.markAsRead(notification.id);
+        setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n)));
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch {
+        // still navigate
+      }
+    }
+    navigate(href);
+  };
+
   const handleMarkAllRead = async () => {
     try {
       await notificationService.markAllAsRead();
@@ -128,7 +146,7 @@ const Notifications = () => {
     const tLower = type.toLowerCase();
     if (tLower.includes("booking")) return <Calendar className="h-5 w-5 text-blue-500" />;
     if (tLower.includes("review")) return <Star className="h-5 w-5 text-yellow-500" />;
-    if (tLower.includes("verified")) return <ShieldCheck className="h-5 w-5 text-green-500" />;
+    if (tLower.includes("verified") || tLower.includes("account_approved")) return <ShieldCheck className="h-5 w-5 text-green-500" />;
     if (tLower.includes("rejected")) return <XCircle className="h-5 w-5 text-red-500" />;
     return <Bell className="h-5 w-5 text-primary" />;
   };
@@ -185,12 +203,18 @@ const Notifications = () => {
               <p className="mt-2 text-muted-foreground">{t("notifications.emptyDesc")}</p>
             </div>
           ) : (
-            notifications.map((notification) => (
+            notifications.map((notification) => {
+              const href = getNotificationLink(notification);
+              return (
               <Card 
                 key={notification.id} 
                 className={`group relative overflow-hidden rounded-2xl border-none shadow-sm transition-all hover:shadow-md ${
                   !notification.is_read ? "ring-1 ring-primary/20" : ""
-                }`}
+                } ${href ? "cursor-pointer" : ""}`}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest("button, [role='menuitem']")) return;
+                  void handleNavigateFromNotification(notification);
+                }}
               >
                 {!notification.is_read && (
                   <div className="absolute inset-y-0 left-0 w-1 bg-primary" />
@@ -215,21 +239,33 @@ const Notifications = () => {
                         
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl">
                             {!notification.is_read && (
                               <DropdownMenuItem 
-                                onClick={() => handleMarkAsRead(notification.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleMarkAsRead(notification.id);
+                                }}
                                 className="cursor-pointer"
                               >
                                 <Check className="mr-2 h-4 w-4" /> {t("notifications.markAsRead")}
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem 
-                              onClick={() => handleDelete(notification.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDelete(notification.id);
+                              }}
                               className="cursor-pointer text-destructive focus:text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" /> {t("notifications.delete")}
@@ -259,7 +295,8 @@ const Notifications = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))
+            );
+            })
           )}
         </div>
       </main>

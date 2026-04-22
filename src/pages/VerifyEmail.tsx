@@ -1,104 +1,83 @@
-import { useState, useEffect } from "react";
-import { useSearchParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import { CheckCircle2, AlertCircle, Loader2, Mail } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Mail, Link2 } from "lucide-react";
 import { authService } from "@/lib/api/authService";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-
-// Schema moved inside component to support dynamic translations
-
-interface VerifyForm {
-  email: string;
-  code: string;
-}
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const urlEmail = searchParams.get("email");
+  const urlEmail = searchParams.get("email") || "";
+  const urlToken = searchParams.get("token") || "";
   const password = location.state?.password;
   
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"idle" | "verifying" | "sent" | "success" | "error">("idle");
+  const [message, setMessage] = useState<string>("");
   const { t } = useLanguage();
 
-  const { register, handleSubmit, control, setValue, getValues, formState: { errors, isSubmitting } } = useForm<VerifyForm>({
-    resolver: zodResolver(z.object({
-      email: z.string().trim().email(t("verifyEmail.invalidEmail") || "Please enter a valid email address"),
-      code: z.string().length(6, t("verifyEmail.invalidCode") || "Verification code must be 6 digits"),
-    })),
-    defaultValues: {
-      email: urlEmail || "",
-      code: "",
-    }
-  });
+  const emailSchema = useMemo(
+    () => z.string().trim().email(t("verifyEmail.invalidEmail") || "Please enter a valid email address"),
+    [t]
+  );
 
   useEffect(() => {
-    if (urlEmail) {
-      setValue("email", urlEmail);
-    }
-  }, [urlEmail, setValue]);
+    const verifyFromToken = async () => {
+      if (!urlToken) return;
+      setStatus("verifying");
+      setMessage("");
+      try {
+        await authService.verifyEmail(urlToken);
 
-  const onSubmit = async (data: VerifyForm) => {
-    setStatus("loading");
-    setMessage("");
-
-    try {
-      await authService.verifyEmail(data.email, data.code);
-      
-      // Auto-login if password was passed in state
-      if (password) {
-        try {
-          await authService.login({ email: data.email, password });
-          const user = await authService.fetchMe();
-          
-          toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
-          
-          if (user.account_type === "PROVIDER") {
-            navigate("/dashboard");
-          } else {
-            navigate("/");
+        // Optional: auto-login if password was passed from registration
+        if (password && urlEmail) {
+          try {
+            await authService.login({ email: urlEmail, password });
+            const user = await authService.fetchMe();
+            toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
+            navigate(user.account_type === "PROVIDER" ? "/dashboard" : "/");
+            return;
+          } catch {
+            // If auto-login fails, fall through to success screen
           }
-          return; // Exit early as we are navigating
-        } catch (loginError) {
-          console.error("Auto-login failed:", loginError);
-          // Fallback to success screen if login fails
         }
+
+        setStatus("success");
+        toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
+      } catch (e: any) {
+        setStatus("error");
+        const msg =
+          e?.message ||
+          e?.data?.error ||
+          e?.data?.detail ||
+          t("verifyEmail.failed") ||
+          "Email verification failed.";
+        setMessage(msg);
+        toast.error(msg);
       }
-      
-      setStatus("success");
-      toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
-    } catch (error: any) {
-      setStatus("error");
-      const errorMsg = error.message || t("verifyEmail.failed") || "Email verification failed.";
-      setMessage(errorMsg);
-      toast.error(errorMsg);
-    }
-  };
+    };
+
+    verifyFromToken();
+  }, [navigate, password, t, urlEmail, urlToken]);
 
   const handleResend = async () => {
-    const currentEmail = getValues("email");
-    if (!currentEmail || !z.string().email().safeParse(currentEmail).success) {
+    if (!urlEmail || !emailSchema.safeParse(urlEmail).success) {
       toast.error(t("verifyEmail.enterValidEmail") || "Please enter a valid email to resend the code.");
       return;
     }
     
     try {
-      await authService.resendVerification(currentEmail);
-      toast.success(t("verifyEmail.resendSuccess") || "Verification code resent to your email.");
+      setStatus("verifying");
+      const res: any = await authService.resendVerification(urlEmail);
+      setStatus("sent");
+      toast.success(res?.message || t("verifyEmail.resendSuccess") || "Verification email resent to your inbox.");
     } catch (error: any) {
+      setStatus("idle");
       toast.error(error.message || t("verifyEmail.resendError") || "Failed to resend code.");
     }
   };
@@ -138,74 +117,62 @@ const VerifyEmail = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div>
-              <label className="text-sm font-medium text-foreground">{t("login.email")}</label>
-              <div className="relative mt-2">
-                <Mail className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input 
-                  type="email" 
-                  {...register("email")} 
-                  placeholder="you@example.com" 
-                  className="w-full rounded-xl border bg-background py-3 ps-11 pe-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" 
-                />
-              </div>
-              {errors.email && <p className="mt-1.5 text-xs text-destructive">{errors.email.message}</p>}
+          {/* Token verification state */}
+          {status === "verifying" && (
+            <div className="flex items-center gap-3 rounded-2xl border bg-muted/20 p-4 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span className="text-muted-foreground">{t("verifyEmail.verifying") || "Verifying..."}</span>
             </div>
+          )}
 
-            <div>
-              <label className="text-sm font-medium text-foreground mb-2 block text-center">{t("verifyEmail.codeLabel") || "Verification Code"}</label>
-              <Controller
-                name="code"
-                control={control}
-                render={({ field }) => (
-                  <div className="flex justify-center">
-                    <InputOTP maxLength={6} value={field.value} onChange={field.onChange}>
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
-                      </InputOTPGroup>
-                    </InputOTP>
+          {status === "error" && (
+            <div className="mt-4 flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded-lg text-sm">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <p>{message}</p>
+            </div>
+          )}
+
+          {/* Resend / instructions */}
+          <div className="mt-6 space-y-4">
+            <div className="rounded-2xl border bg-card p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                  {urlToken ? <Link2 className="h-4 w-4 text-primary" /> : <Mail className="h-4 w-4 text-primary" />}
+                </div>
+                <div className="space-y-1">
+                  <div className="font-semibold text-foreground">
+                    {urlToken ? (t("verifyEmail.linkFlowTitle") || "Verifying your link") : (t("verifyEmail.checkInboxTitle") || "Check your inbox")}
                   </div>
-                )}
-              />
-              {errors.code && <p className="mt-1.5 text-xs text-destructive text-center">{errors.code.message}</p>}
+                  <div className="text-sm text-muted-foreground">
+                    {urlToken
+                      ? (t("verifyEmail.linkFlowDesc") || "We’re confirming your email using the verification link.")
+                      : (t("verifyEmail.checkInboxDesc") || "We sent you a verification link. Open it to activate your account.")}
+                  </div>
+                </div>
+              </div>
+
+              {urlEmail && (
+                <div className="text-xs text-muted-foreground">
+                  {t("login.email")}: <span className="font-semibold text-foreground">{urlEmail}</span>
+                </div>
+              )}
             </div>
 
-            {status === "error" && (
-              <div className="flex items-center gap-2 text-destructive bg-destructive/10 p-3 rounded-lg text-sm">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <p>{message}</p>
-              </div>
-            )}
-
-            <Button type="submit" className="w-full rounded-xl" size="lg" disabled={isSubmitting || status === "loading"}>
-              {status === "loading" ? (
-                <>
-                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                  {t("verifyEmail.verifying")}
-                </>
-              ) : (
-                t("verifyEmail.submitBtn")
-              )}
+            <Button
+              type="button"
+              className="w-full rounded-xl"
+              size="lg"
+              onClick={handleResend}
+              disabled={status === "verifying"}
+            >
+              {t("verifyEmail.resendBtn")}
             </Button>
-          </form>
 
-          <div className="mt-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              {t("verifyEmail.didntReceive")}{" "}
-              <button 
-                type="button" 
-                onClick={handleResend}
-                className="font-medium text-primary hover:underline bg-transparent border-none p-0 cursor-pointer"
-              >
-                {t("verifyEmail.resendBtn")}
-              </button>
-            </p>
+            <Link to="/login" className="block">
+              <Button variant="outline" className="w-full rounded-xl" size="lg">
+                {t("verifyEmail.backToLogin") || "Back to Login"}
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

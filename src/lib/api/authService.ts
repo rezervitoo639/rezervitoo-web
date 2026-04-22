@@ -7,6 +7,27 @@ import { API_BASE_URL } from "./config";
 
 const BASE_URL = `${API_BASE_URL}/api/v1/users`;
 
+type ApiErrorShape = {
+  status: number;
+  data?: any;
+  message?: string;
+};
+
+async function readJsonSafe(response: Response): Promise<any | null> {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function buildApiError(response: Response, data: any | null, fallbackMessage: string): ApiErrorShape {
+  const msg =
+    (data && (data.detail || data.error || data.message)) ||
+    fallbackMessage;
+  return { status: response.status, data: data ?? undefined, message: typeof msg === "string" ? msg : fallbackMessage };
+}
+
 export type AuthTokens = {
   access: string;
   refresh: string;
@@ -83,14 +104,8 @@ export const authService = {
     });
 
     if (!response.ok) {
-      let errorMessage = "Login failed";
-      try {
-        const error = await response.json();
-        errorMessage = error.detail || error.error || error.message || errorMessage;
-      } catch (e) {
-        // Fallback for non-JSON errors
-      }
-      throw new Error(errorMessage);
+      const data = await readJsonSafe(response);
+      throw buildApiError(response, data, "Login failed");
     }
 
     const tokens = (await response.json()) as AuthTokens;
@@ -106,8 +121,8 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || error.error || "Google login failed");
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Google login failed");
     }
 
     const result = await response.json();
@@ -116,17 +131,29 @@ export const authService = {
     return tokens;
   },
 
-  async resendVerification(email: string): Promise<void> {
+  /**
+   * Send/resend verification email.
+   * Per API docs: can be unauthenticated with { email } or authenticated with empty body.
+   */
+  async resendVerification(email?: string): Promise<{ message?: string } | void> {
+    const token = this.getAccessToken();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token && !email) headers.Authorization = `Bearer ${token}`;
+
     const response = await fetch(`${BASE_URL}/verify-email/send/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      headers,
+      body: email ? JSON.stringify({ email }) : JSON.stringify({}),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || error.error || "Failed to resend verification email");
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Failed to resend verification email");
     }
+
+    // Endpoint usually returns { message }, but callers might not need it.
+    const data = await readJsonSafe(response);
+    return data ?? undefined;
   },
 
   async registerUser(data: any): Promise<UserProfile> {
@@ -137,8 +164,8 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw error; 
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Registration failed");
     }
 
     return (await response.json()) as UserProfile;
@@ -152,8 +179,8 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Registration failed");
     }
 
     return (await response.json()) as UserProfile;
@@ -161,7 +188,7 @@ export const authService = {
 
   async fetchMe(): Promise<UserProfile> {
     const token = this.getAccessToken();
-    if (!token) throw new Error("No access token found");
+    if (!token) throw { status: 401, message: "No access token found" } satisfies ApiErrorShape;
 
     const response = await fetch(`${BASE_URL}/me/`, {
       headers: {
@@ -176,7 +203,8 @@ export const authService = {
     }
 
     if (!response.ok) {
-      throw new Error("Failed to fetch user data");
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Failed to fetch user data");
     }
 
     const user = (await response.json()) as UserProfile;
@@ -186,7 +214,7 @@ export const authService = {
 
   async refresh(): Promise<string> {
     const refresh = this.getRefreshToken();
-    if (!refresh) throw new Error("No refresh token found");
+    if (!refresh) throw { status: 401, message: "No refresh token found" } satisfies ApiErrorShape;
 
     const response = await fetch(`${BASE_URL}/refresh/`, {
       method: "POST",
@@ -196,7 +224,8 @@ export const authService = {
 
     if (!response.ok) {
       this.clearAuth();
-      throw new Error("Session expired, please login again");
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Session expired, please login again");
     }
 
     const data = await response.json();
@@ -225,16 +254,20 @@ export const authService = {
     return response.json();
   },
 
-  async verifyEmail(email: string, code: string): Promise<any> {
+  /**
+   * Verify email using a signed token from the verification link.
+   * API docs: POST /verify-email/ { token }
+   */
+  async verifyEmail(token: string): Promise<any> {
     const response = await fetch(`${BASE_URL}/verify-email/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify({ token }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || error.detail || "Email verification failed");
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Email verification failed");
     }
 
     return response.json();
@@ -248,8 +281,8 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || error.detail || "Failed to request password reset");
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Failed to request password reset");
     }
   },
 
@@ -261,8 +294,8 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || error.detail || "Failed to reset password");
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Failed to reset password");
     }
   },
 
@@ -284,8 +317,8 @@ export const authService = {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Failed to update profile" }));
-        throw error;
+        const err = await readJsonSafe(response);
+        throw buildApiError(response, err, "Failed to update profile");
       }
 
       const user = (await response.json()) as UserProfile;
@@ -319,10 +352,10 @@ export const authService = {
           }
         } else {
           try {
-            const error = JSON.parse(xhr.responseText);
-            reject(error);
+            const err = JSON.parse(xhr.responseText);
+            reject({ status: xhr.status, data: err, message: err?.detail || err?.error || "Failed to update profile" });
           } catch (e) {
-            reject({ detail: "Failed to update profile" });
+            reject({ status: xhr.status, message: "Failed to update profile" });
           }
         }
       };
@@ -334,7 +367,7 @@ export const authService = {
 
   async fetchDocumentStatus(): Promise<any> {
     const token = this.getAccessToken();
-    if (!token) throw new Error("No access token found");
+    if (!token) throw { status: 401, message: "No access token found" } satisfies ApiErrorShape;
 
     const response = await fetch(`${BASE_URL}/documents/`, {
       headers: {
@@ -343,7 +376,8 @@ export const authService = {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to fetch document status");
+      const err = await readJsonSafe(response);
+      throw buildApiError(response, err, "Failed to fetch document status");
     }
 
     return response.json();
@@ -351,7 +385,7 @@ export const authService = {
 
   async submitDocuments(formData: FormData, onProgress?: (progress: number) => void): Promise<UserProfile> {
     const token = this.getAccessToken();
-    if (!token) throw new Error("No access token found");
+    if (!token) throw { status: 401, message: "No access token found" } satisfies ApiErrorShape;
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -378,10 +412,10 @@ export const authService = {
           }
         } else {
           try {
-            const error = JSON.parse(xhr.responseText);
-            reject(error);
+            const err = JSON.parse(xhr.responseText);
+            reject({ status: xhr.status, data: err, message: err?.detail || err?.error || "Failed to submit documents" });
           } catch (e) {
-            reject({ detail: "Failed to submit documents" });
+            reject({ status: xhr.status, message: "Failed to submit documents" });
           }
         }
       };

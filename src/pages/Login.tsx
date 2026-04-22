@@ -10,6 +10,7 @@ import Navbar from "@/components/Navbar";
 import { authService } from "@/lib/api/authService";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { GoogleLogin } from "@react-oauth/google";
+import { formatApiError } from "@/lib/utils";
 
 
 const loginSchema = z.object({
@@ -39,26 +40,28 @@ const Login = () => {
         navigate("/"); 
       }
     } catch (error: any) {
-      const isUnverified = error.message?.includes("verify your email") || 
-                          error.message?.includes("active account found");
+      const msg = formatApiError(error, t);
+      const isUnverified =
+        typeof msg === "string" &&
+        (msg.toLowerCase().includes("verify") && msg.toLowerCase().includes("email"));
       
       if (isUnverified) {
-        toast.error(error.message, {
+        toast.error(msg, {
           action: {
-            label: "Resend Email",
+            label: t("verifyEmail.resendBtn") || "Resend email",
             onClick: async () => {
               try {
                 await authService.resendVerification(data.email);
-                toast.success("Verification email resent!");
+                toast.success(t("verifyEmail.resendSuccess") || "Verification email resent!");
               } catch (e: any) {
-                toast.error(e.message || t("errors.auth.resendFailed"));
+                toast.error(formatApiError(e, t) || t("errors.auth.resendFailed"));
               }
             }
           },
           duration: 10000,
         });
       } else {
-        toast.error(error.message || t("errors.auth.loginFailed"));
+        toast.error(msg || t("errors.auth.loginFailed"));
       }
     }
   };

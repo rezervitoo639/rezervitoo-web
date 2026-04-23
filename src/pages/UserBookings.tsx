@@ -15,6 +15,7 @@ const UserBookings = () => {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [filter, setFilter] = useState<string>("ALL");
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
 
   useEffect(() => {
     const bid = searchParams.get("bookingId");
@@ -39,12 +40,21 @@ const UserBookings = () => {
   }, [t]);
 
   const handleCancelBooking = async (id: number) => {
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking || booking.status !== "PENDING") {
+      toast.error(t("errors.bookings.cancel"));
+      return;
+    }
+
+    setCancellingId(id);
     try {
       await bookingService.cancelBooking(id);
       setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: "CANCELLED" } : b)));
       toast.success(t("userBookings.successCancelled"));
     } catch (error: any) {
       toast.error(error.message || t("errors.bookings.cancel"));
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -169,8 +179,16 @@ const UserBookings = () => {
                               variant="outline"
                               className="rounded-xl text-xs"
                               onClick={() => handleCancelBooking(booking.id)}
+                              disabled={cancellingId === booking.id}
                             >
-                              {t("userBookings.cancel")}
+                              {cancellingId === booking.id ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin me-1" />
+                                  {t("common.loading")}
+                                </>
+                              ) : (
+                                t("userBookings.cancel")
+                              )}
                             </Button>
                           )}
                           {booking.status === "COMPLETED" && (

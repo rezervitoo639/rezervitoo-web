@@ -263,6 +263,22 @@ export const listingService = {
     });
   },
 
+  /** Delete a listing (owner/admin) */
+  async deleteListing(id: string | number): Promise<void> {
+    const token = authService.getAccessToken();
+    const response = await fetch(`${BASE_URL}/${id}/`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Failed to delete listing");
+    }
+  },
+
   /** Create a schedule for a travel package */
   async createPackageSchedule(listingId: number | string, scheduleData: { start_date: string, max_capacity: number }): Promise<PackageSchedule> {
     const token = authService.getAccessToken();

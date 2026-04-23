@@ -12,6 +12,7 @@ const MyListings = () => {
   const { t } = useLanguage();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     const loadMyListings = async () => {
@@ -35,6 +36,22 @@ const MyListings = () => {
     HOTEL_ROOM: t("createListing.hotelLabel"),
     HOSTEL_BED: t("createListing.hostelLabel"),
     TRAVEL_PACKAGE: t("createListing.packageLabel"),
+  };
+
+  const handleDeleteListing = async (id: number) => {
+    const confirmed = window.confirm(t("myListings.confirmDelete") || "Are you sure you want to delete this listing?");
+    if (!confirmed) return;
+
+    setDeletingId(id);
+    try {
+      await listingService.deleteListing(id);
+      setListings((prev) => prev.filter((l) => l.id !== id));
+      toast.success(t("myListings.deletedSuccess") || "Listing deleted successfully.");
+    } catch (error: any) {
+      toast.error(error.message || t("errors.listings.delete") || "Failed to delete listing.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -82,7 +99,15 @@ const MyListings = () => {
                 <div className="flex shrink-0 gap-2">
                   <Link to={`/listing/${listing.id}`}><Button variant="outline" size="icon" className="rounded-xl"><Eye className="h-4 w-4" /></Button></Link>
                   <Link to={`/dashboard/edit/${listing.id}`}><Button variant="outline" size="icon" className="rounded-xl"><Pencil className="h-4 w-4" /></Button></Link>
-                  <Button variant="outline" size="icon" className="rounded-xl text-destructive hover:bg-destructive hover:text-destructive-foreground"><Trash2 className="h-4 w-4" /></Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-xl text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() => handleDeleteListing(listing.id)}
+                    disabled={deletingId === listing.id}
+                  >
+                    {deletingId === listing.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
             ))

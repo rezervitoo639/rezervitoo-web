@@ -326,6 +326,9 @@
   "register.success": "تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني للحصول على رمز التفعيل.",
   "register.passwordsMismatch": "كلمات المرور غير متطابقة.",
   "register.passwordLength": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+  "register.phoneInvalid": "يجب أن يتكون رقم الهاتف من 10 أرقام فقط.",
+  "register.passwordUppercase": "يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل.",
+  "register.passwordNumber": "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل.",
 
   "dashboard.title": "لوحة التحكم",
   "dashboard.welcome": "مرحباً بعودتك! إليك نظرة عامة.",
@@ -340,6 +343,8 @@
   "myListings.title": "إعلاناتي",
   "myListings.addListing": "إضافة إعلان",
   "myListings.noListings": "لم تنشر إعلانات بعد.",
+  "myListings.confirmDelete": "هل أنت متأكد أنك تريد حذف هذا الإعلان؟",
+  "myListings.deletedSuccess": "تم حذف الإعلان بنجاح.",
 
   "createListing.mapPickerTitle": "انقر على الخريطة لتحديد موقعك",
   "createListing.selectedCoords": "الاحداثيات المحددة",
@@ -761,6 +766,7 @@
   "errors.listings.load": "فشل تحميل الإعلانات.",
   "errors.listings.loadMine": "فشل تحميل إعلاناتك.",
   "errors.listings.details": "فشل تحميل تفاصيل الإعلان.",
+  "errors.listings.delete": "فشل حذف الإعلان.",
   "errors.listings.wishlist": "فشل تحديث المفضلة.",
   "errors.notifications.fetch": "فشل تحميل الإشعارات.",
   "errors.notifications.markRead": "فشل تحديد الإشعار كمقروء.",

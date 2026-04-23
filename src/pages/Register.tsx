@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,35 +16,55 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { authService } from "@/lib/api/authService";
 import { GoogleLogin } from "@react-oauth/google";
 
-const registerSchema = z.object({
-  accountType: z.enum(["USER", "PROVIDER"]),
-  firstName: z.string().trim().min(2).max(100),
-  lastName: z.string().trim().min(2).max(100),
-  phone: z.string().trim().min(10).max(15),
-  email: z.string().trim().email().max(255),
-  password: z.string().min(8).max(128).regex(/[A-Z]/).regex(/[0-9]/),
-  confirmPassword: z.string(),
-  role: z.enum(["HOST", "HOTEL", "HOSTEL", "AGENCY"]).optional(),
-  hostType: z.enum(["OWNER", "AGENT"]).optional(),
-  hotelName: z.string().optional(),
-  stars: z.string().optional(),
-  hostelName: z.string().optional(),
-  genderRestriction: z.enum(["MALE", "FEMALE", "MIXED"]).optional(),
-  agencyName: z.string().optional(),
-}).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] })
-  .refine((d) => { if (d.accountType === "PROVIDER") return !!d.role; return true; }, { path: ["role"] })
-  .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "HOST") return !!d.hostType; return true; }, { path: ["hostType"] })
-  .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "HOTEL") return !!d.hotelName && !!d.stars; return true; }, { path: ["hotelName"] })
-  .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "HOSTEL") return !!d.hostelName && !!d.genderRestriction; return true; }, { path: ["hostelName"] })
-  .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "AGENCY") return !!d.agencyName; return true; }, { path: ["agencyName"] });
-
-type RegisterForm = z.infer<typeof registerSchema>;
-
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { register, handleSubmit, watch, control, setValue, formState: { errors, isSubmitting } } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema), defaultValues: { accountType: "USER" } });
+
+  const registerSchema = useMemo(() => {
+    const phoneSchema = z
+      .string()
+      .trim()
+      .regex(/^\d{10}$/, t("register.phoneInvalid") || "Phone number must be exactly 10 digits");
+
+    const passwordSchema = z
+      .string()
+      .min(8, t("register.passwordLength") || "Password must be at least 8 characters.")
+      .max(128)
+      .regex(/[A-Z]/, t("register.passwordUppercase") || "Password must contain at least 1 uppercase letter.")
+      .regex(/[0-9]/, t("register.passwordNumber") || "Password must contain at least 1 number.");
+
+    return z.object({
+      accountType: z.enum(["USER", "PROVIDER"]),
+      firstName: z.string().trim().min(2).max(100),
+      lastName: z.string().trim().min(2).max(100),
+      phone: phoneSchema,
+      email: z.string().trim().email().max(255),
+      password: passwordSchema,
+      confirmPassword: z.string(),
+      role: z.enum(["HOST", "HOTEL", "HOSTEL", "AGENCY"]).optional(),
+      hostType: z.enum(["OWNER", "AGENT"]).optional(),
+      hotelName: z.string().optional(),
+      stars: z.string().optional(),
+      hostelName: z.string().optional(),
+      genderRestriction: z.enum(["MALE", "FEMALE", "MIXED"]).optional(),
+      agencyName: z.string().optional(),
+    })
+      .refine((d) => d.password === d.confirmPassword, {
+        message: t("register.passwordsMismatch") || "Passwords do not match.",
+        path: ["confirmPassword"],
+      })
+      .refine((d) => { if (d.accountType === "PROVIDER") return !!d.role; return true; }, { path: ["role"] })
+      .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "HOST") return !!d.hostType; return true; }, { path: ["hostType"] })
+      .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "HOTEL") return !!d.hotelName && !!d.stars; return true; }, { path: ["hotelName"] })
+      .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "HOSTEL") return !!d.hostelName && !!d.genderRestriction; return true; }, { path: ["hostelName"] })
+      .refine((d) => { if (d.accountType === "PROVIDER" && d.role === "AGENCY") return !!d.agencyName; return true; }, { path: ["agencyName"] });
+  }, [t]);
+
+  type RegisterForm = z.infer<typeof registerSchema>;
+
+  const { register, handleSubmit, watch, control, setValue, formState: { errors, isSubmitting } } =
+    useForm<RegisterForm>({ resolver: zodResolver(registerSchema), defaultValues: { accountType: "USER" } });
   const accountType = watch("accountType");
   const role = watch("role");
 
@@ -196,7 +216,18 @@ const Register = () => {
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">{t("register.phone")}</label>
-              <div className="relative mt-2"><Phone className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type="tel" {...register("phone")} placeholder="0123456789" className="w-full rounded-xl border bg-background py-3 ps-11 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring" /></div>
+              <div className="relative mt-2">
+                <Phone className="absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="\\d*"
+                  maxLength={10}
+                  {...register("phone")}
+                  placeholder="0123456789"
+                  className="w-full rounded-xl border bg-background py-3 ps-11 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
               {errors.phone && <p className="mt-1.5 text-xs text-destructive">{errors.phone.message}</p>}
             </div>
             <div>

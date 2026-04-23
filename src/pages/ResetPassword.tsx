@@ -32,6 +32,14 @@ const ResetPassword = () => {
       toast.error(t("register.passwordLength") || "Password must be at least 8 characters.");
       return;
     }
+    if (!/[A-Z]/.test(password)) {
+      toast.error(t("register.passwordUppercase") || "Password must contain at least 1 uppercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      toast.error(t("register.passwordNumber") || "Password must contain at least 1 number.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {

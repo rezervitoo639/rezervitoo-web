@@ -149,23 +149,22 @@ export const bookingService = {
   /** Cancel own booking (User) */
   async cancelBooking(id: number): Promise<{ status: string }> {
     const token = authService.getAccessToken();
-    const headers = {
+    const headers: Record<string, string> = {
       "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
     };
 
-    // Primary expected action endpoint
-    let response = await fetch(`${BASE_URL}/${id}/cancel/`, {
-      method: "POST",
+    // Backend contract from API team:
+    // DELETE /api/v1/bookings/{id}/ with owner authorization.
+    let response = await fetch(`${BASE_URL}/${id}/`, {
+      method: "DELETE",
       headers,
     });
 
-    // Fallback for backends exposing partial update only
+    // Compatibility fallback for older environments
     if (response.status === 404 || response.status === 405) {
-      response = await fetch(`${BASE_URL}/${id}/`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({ status: "CANCELLED" }),
+      response = await fetch(`${BASE_URL}/${id}/cancel/`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
       });
     }
 
@@ -174,6 +173,7 @@ export const bookingService = {
       throw new Error(error.detail || "Failed to cancel booking");
     }
 
+    if (response.status === 204) return { status: "cancelled" };
     const data = await response.json().catch(() => ({}));
     return data?.status ? data : { status: "cancelled" };
   },

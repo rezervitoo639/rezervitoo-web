@@ -300,6 +300,9 @@
   "register.success": "Compte créé avec succès ! Veuillez vérifier votre e-mail pour le code d'activation.",
   "register.passwordsMismatch": "Les mots de passe ne correspondent pas.",
   "register.passwordLength": "Le mot de passe doit comporter au moins 8 caractères.",
+  "register.phoneInvalid": "Le numéro de téléphone doit contenir exactement 10 chiffres.",
+  "register.passwordUppercase": "Le mot de passe doit contenir au moins une lettre majuscule.",
+  "register.passwordNumber": "Le mot de passe doit contenir au moins un chiffre.",
 
   "dashboard.title": "Tableau de Bord",
   "dashboard.welcome": "Bon retour ! Voici un aperçu.",
@@ -314,6 +317,8 @@
   "myListings.title": "Mes Annonces",
   "myListings.addListing": "Ajouter une Annonce",
   "myListings.noListings": "Vous n'avez pas encore publié d'annonces.",
+  "myListings.confirmDelete": "Voulez-vous vraiment supprimer cette annonce ?",
+  "myListings.deletedSuccess": "Annonce supprimée avec succès.",
 
   "createListing.mapPickerTitle": "Cliquez sur la carte pour sélectionner votre emplacement",
   "createListing.selectedCoords": "Coordonnées sélectionnées",
@@ -772,6 +777,7 @@
   "errors.listings.load": "Échec du chargement des annonces.",
   "errors.listings.loadMine": "Échec du chargement de vos annonces.",
   "errors.listings.details": "Échec du chargement des détails de l'annonce.",
+  "errors.listings.delete": "Échec de la suppression de l'annonce.",
   "errors.listings.wishlist": "Échec de la mise à jour des favoris.",
   "errors.notifications.fetch": "Échec du chargement des notifications.",
   "errors.notifications.markRead": "Échec du marquage de la notification comme lue.",

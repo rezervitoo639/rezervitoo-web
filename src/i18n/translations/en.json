@@ -305,6 +305,9 @@
   "register.success": "Account created successfully! Please check your email for the verification code.",
   "register.passwordsMismatch": "Passwords do not match.",
   "register.passwordLength": "Password must be at least 8 characters.",
+  "register.phoneInvalid": "Phone number must be exactly 10 digits.",
+  "register.passwordUppercase": "Password must contain at least 1 uppercase letter.",
+  "register.passwordNumber": "Password must contain at least 1 number.",
 
   "dashboard.title": "Dashboard",
   "dashboard.welcome": "Welcome back! Here's an overview.",
@@ -319,6 +322,8 @@
   "myListings.title": "My Listings",
   "myListings.addListing": "Add Listing",
   "myListings.noListings": "You haven't posted any announcements yet.",
+  "myListings.confirmDelete": "Are you sure you want to delete this listing?",
+  "myListings.deletedSuccess": "Listing deleted successfully.",
 
   "createListing.mapPickerTitle": "Click on the map to select your location",
   "createListing.selectedCoords": "Selected coordinates",
@@ -752,6 +757,7 @@
   "errors.listings.load": "Failed to load listings.",
   "errors.listings.loadMine": "Failed to load your listings.",
   "errors.listings.details": "Failed to load listing details.",
+  "errors.listings.delete": "Failed to delete listing.",
   "errors.listings.wishlist": "Failed to update wishlist.",
   "errors.notifications.fetch": "Failed to fetch notifications.",
   "errors.notifications.markRead": "Failed to mark notification as read.",

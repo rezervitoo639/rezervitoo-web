@@ -105,11 +105,11 @@ const Register = () => {
         { duration: 8000 }
       );
 
-      // Persist for auto-login after OTP verification (survives refresh).
+      // Persist for auto-login after OTP verification (survives refresh and cross-tab).
       // Cleared after successful verification/login.
       try {
-        sessionStorage.setItem("pending_verify_email", data.email);
-        sessionStorage.setItem("pending_verify_password", data.password);
+        localStorage.setItem("pending_verify_email", data.email);
+        localStorage.setItem("pending_verify_password", data.password);
       } catch {
         // ignore storage errors (private mode, etc.)
       }

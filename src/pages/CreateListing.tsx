@@ -392,40 +392,10 @@ const CreateListing = () => {
       }
 
       // ── Process Schedules (TRAVEL_PACKAGE only)
+      // Schedules are sent via 'uploaded_schedules' in the multipart form data during listing creation/update.
+      // There is no separate /schedules/ endpoint, so we don't make subsequent API calls here.
       if (listingType === "TRAVEL_PACKAGE") {
         setUploadProgress(100); 
-        const listingIdToUse = isEditMode ? id : createdListing?.id;
-        
-        if (listingIdToUse) {
-          try {
-             // 1. Delete removed schedules
-             if (isEditMode && deletedSchedules.length > 0) {
-               await Promise.all(deletedSchedules.map(scheduleId => 
-                 listingService.deletePackageSchedule(listingIdToUse, scheduleId)
-               ));
-             }
-             
-             // 2. Add or update active schedules
-             if (schedules.length > 0) {
-               await Promise.all(schedules.map(schedule => {
-                 if (schedule.id) {
-                    return listingService.updatePackageSchedule(listingIdToUse, schedule.id, {
-                       start_date: schedule.start_date,
-                       max_capacity: schedule.max_capacity
-                    });
-                 } else {
-                    return listingService.createPackageSchedule(listingIdToUse, {
-                       start_date: schedule.start_date,
-                       max_capacity: schedule.max_capacity
-                    });
-                 }
-               }));
-             }
-          } catch (scheduleError) {
-             console.error("Failed to add/update schedules:", scheduleError);
-             toast.error(t("createListing.schedulesError") || "Listing created, but some schedules failed to save. Please review them.");
-          }
-        }
       }
 
       navigate("/dashboard/listings");
@@ -582,12 +552,12 @@ const CreateListing = () => {
       {/* Mobile Current Step Label */}
       <div className="mt-4 md:hidden text-center">
         <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
-          Step {step}: {
-            step === 1 ? "Basics" :
-            step === 2 ? "Location" :
-            step === 3 ? "Features" :
-            step === 4 ? (listingType === "TRAVEL_PACKAGE" ? "Itinerary" : "Beds") :
-            "Media"
+          {t("createListing.step", { step, total: totalSteps }) || `Step ${step}`}: {
+            step === 1 ? (t("createListing.stepBasics") || "Basics") :
+            step === 2 ? (t("createListing.stepLocation") || "Location") :
+            step === 3 ? (t("createListing.stepFeatures") || "Features") :
+            step === 4 ? (listingType === "TRAVEL_PACKAGE" ? (t("createListing.itinerary") || "Itinerary") : (t("createListing.beds") || "Beds")) :
+            (t("createListing.stepMedia") || "Media")
           }
         </span>
       </div>

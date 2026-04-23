@@ -18,10 +18,10 @@ const VerifyEmail = () => {
   const urlToken = searchParams.get("token") || "";
   const statePassword = location.state?.password as string | undefined;
   const storedEmail = (() => {
-    try { return sessionStorage.getItem("pending_verify_email") || ""; } catch { return ""; }
+    try { return localStorage.getItem("pending_verify_email") || sessionStorage.getItem("pending_verify_email") || ""; } catch { return ""; }
   })();
   const storedPassword = (() => {
-    try { return sessionStorage.getItem("pending_verify_password") || ""; } catch { return ""; }
+    try { return localStorage.getItem("pending_verify_password") || sessionStorage.getItem("pending_verify_password") || ""; } catch { return ""; }
   })();
   const password = statePassword || storedPassword || "";
   const effectiveEmail = urlEmail || storedEmail || "";
@@ -42,26 +42,49 @@ const VerifyEmail = () => {
       setStatus("verifying");
       setMessage("");
       try {
-        await authService.verifyEmail({ token: urlToken });
+        const verifyRes = await authService.verifyEmail({ token: urlToken });
 
-        // Optional: auto-login if password was passed from registration
-        if (password && effectiveEmail) {
+        let loggedIn = false;
+        
+        // 1. Check if backend returned auth tokens directly
+        if (verifyRes && verifyRes.access && verifyRes.refresh) {
+          authService.setAuth({ access: verifyRes.access, refresh: verifyRes.refresh });
+          try {
+            const user = await authService.fetchMe();
+            loggedIn = true;
+            try {
+              localStorage.removeItem("pending_verify_email");
+              localStorage.removeItem("pending_verify_password");
+              sessionStorage.removeItem("pending_verify_email");
+              sessionStorage.removeItem("pending_verify_password");
+            } catch {}
+            toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
+            navigate(user.account_type === "PROVIDER" ? "/dashboard" : "/");
+          } catch {}
+        }
+
+        // 2. Optional: auto-login if password was passed from registration
+        if (!loggedIn && password && effectiveEmail) {
           try {
             await authService.login({ email: effectiveEmail, password });
             const user = await authService.fetchMe();
+            loggedIn = true;
             toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
             try {
+              localStorage.removeItem("pending_verify_email");
+              localStorage.removeItem("pending_verify_password");
               sessionStorage.removeItem("pending_verify_email");
               sessionStorage.removeItem("pending_verify_password");
             } catch {
               // ignore
             }
             navigate(user.account_type === "PROVIDER" ? "/dashboard" : "/");
-            return;
           } catch {
             // If auto-login fails, fall through to success screen
           }
         }
+
+        if (loggedIn) return;
 
         setStatus("success");
         toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
@@ -94,26 +117,49 @@ const VerifyEmail = () => {
     setStatus("verifying");
     setMessage("");
     try {
-      await authService.verifyEmail({ email: effectiveEmail, code });
+      const verifyRes = await authService.verifyEmail({ email: effectiveEmail, code });
 
-      // Optional: auto-login if password was passed from registration
-      if (password) {
+      let loggedIn = false;
+
+      // 1. Check if backend returned auth tokens directly
+      if (verifyRes && verifyRes.access && verifyRes.refresh) {
+        authService.setAuth({ access: verifyRes.access, refresh: verifyRes.refresh });
+        try {
+          const user = await authService.fetchMe();
+          loggedIn = true;
+          try {
+            localStorage.removeItem("pending_verify_email");
+            localStorage.removeItem("pending_verify_password");
+            sessionStorage.removeItem("pending_verify_email");
+            sessionStorage.removeItem("pending_verify_password");
+          } catch {}
+          toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
+          navigate(user.account_type === "PROVIDER" ? "/dashboard" : "/");
+        } catch {}
+      }
+
+      // 2. Optional: auto-login if password was passed from registration
+      if (!loggedIn && password) {
         try {
           await authService.login({ email: effectiveEmail, password });
           const user = await authService.fetchMe();
+          loggedIn = true;
           toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
           try {
+            localStorage.removeItem("pending_verify_email");
+            localStorage.removeItem("pending_verify_password");
             sessionStorage.removeItem("pending_verify_email");
             sessionStorage.removeItem("pending_verify_password");
           } catch {
             // ignore
           }
           navigate(user.account_type === "PROVIDER" ? "/dashboard" : "/");
-          return;
         } catch {
           // fallthrough
         }
       }
+
+      if (loggedIn) return;
 
       setStatus("success");
       toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");

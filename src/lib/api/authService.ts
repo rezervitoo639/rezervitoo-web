@@ -255,14 +255,16 @@ export const authService = {
   },
 
   /**
-   * Verify email using a signed token from the verification link.
-   * API docs: POST /verify-email/ { token }
+   * Verify email.
+   * Supports both backend styles:
+   * - token-based: POST /verify-email/ { token }
+   * - code-based:  POST /verify-email/ { email, code }
    */
-  async verifyEmail(token: string): Promise<any> {
+  async verifyEmail(payload: { token: string } | { email: string; code: string }): Promise<any> {
     const response = await fetch(`${BASE_URL}/verify-email/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {

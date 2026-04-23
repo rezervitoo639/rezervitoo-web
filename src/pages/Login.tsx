@@ -48,7 +48,7 @@ const Login = () => {
       if (isUnverified) {
         toast.error(msg, {
           action: {
-            label: t("verifyEmail.resendBtn") || "Resend email",
+            label: t("verifyEmail.resendBtn") || "Resend code",
             onClick: async () => {
               try {
                 await authService.resendVerification(data.email);

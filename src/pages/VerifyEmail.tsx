@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -19,6 +20,7 @@ const VerifyEmail = () => {
   
   const [status, setStatus] = useState<"idle" | "verifying" | "sent" | "success" | "error">("idle");
   const [message, setMessage] = useState<string>("");
+  const [code, setCode] = useState<string>("");
   const { t } = useLanguage();
 
   const emailSchema = useMemo(
@@ -32,7 +34,7 @@ const VerifyEmail = () => {
       setStatus("verifying");
       setMessage("");
       try {
-        await authService.verifyEmail(urlToken);
+        await authService.verifyEmail({ token: urlToken });
 
         // Optional: auto-login if password was passed from registration
         if (password && urlEmail) {
@@ -64,6 +66,49 @@ const VerifyEmail = () => {
 
     verifyFromToken();
   }, [navigate, password, t, urlEmail, urlToken]);
+
+  const handleVerifyCode = async () => {
+    if (!urlEmail || !emailSchema.safeParse(urlEmail).success) {
+      toast.error(t("verifyEmail.enterValidEmail") || "Please enter a valid email.");
+      return;
+    }
+    if (!/^\d{6}$/.test(code)) {
+      toast.error(t("verifyEmail.invalidCode") || "Verification code must be 6 digits");
+      return;
+    }
+
+    setStatus("verifying");
+    setMessage("");
+    try {
+      await authService.verifyEmail({ email: urlEmail, code });
+
+      // Optional: auto-login if password was passed from registration
+      if (password) {
+        try {
+          await authService.login({ email: urlEmail, password });
+          const user = await authService.fetchMe();
+          toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
+          navigate(user.account_type === "PROVIDER" ? "/dashboard" : "/");
+          return;
+        } catch {
+          // fallthrough
+        }
+      }
+
+      setStatus("success");
+      toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
+    } catch (e: any) {
+      setStatus("error");
+      const msg =
+        e?.message ||
+        e?.data?.error ||
+        e?.data?.detail ||
+        t("verifyEmail.failed") ||
+        "Email verification failed.";
+      setMessage(msg);
+      toast.error(msg);
+    }
+  };
 
   const handleResend = async () => {
     if (!urlEmail || !emailSchema.safeParse(urlEmail).success) {
@@ -146,7 +191,7 @@ const VerifyEmail = () => {
                   <div className="text-sm text-muted-foreground">
                     {urlToken
                       ? (t("verifyEmail.linkFlowDesc") || "We’re confirming your email using the verification link.")
-                      : (t("verifyEmail.checkInboxDesc") || "We sent you a verification link. Open it to activate your account.")}
+                      : (t("verifyEmail.checkInboxDesc") || "We sent you a 6-digit code. Enter it below to activate your account.")}
                   </div>
                 </div>
               </div>
@@ -157,6 +202,42 @@ const VerifyEmail = () => {
                 </div>
               )}
             </div>
+
+            {!urlToken && (
+              <div className="rounded-2xl border bg-card p-4 space-y-4">
+                <div className="text-sm font-semibold text-foreground text-center">
+                  {t("verifyEmail.codeLabel") || "Verification Code"}
+                </div>
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={6}
+                    value={code}
+                    onChange={(v) => setCode(v)}
+                    inputMode="numeric"
+                    pattern="\d*"
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+
+                <Button
+                  type="button"
+                  className="w-full rounded-xl"
+                  size="lg"
+                  onClick={handleVerifyCode}
+                  disabled={status === "verifying" || code.length !== 6}
+                >
+                  {t("verifyEmail.submitBtn") || "Verify Email"}
+                </Button>
+              </div>
+            )}
 
             <Button
               type="button"

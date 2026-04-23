@@ -81,7 +81,7 @@ const Register = () => {
       }
 
       toast.success(
-        t("register.success") || "Account created! Please check your email inbox for the verification link.",
+        t("register.success") || "Account created! Please check your email inbox for the verification code.",
         { duration: 8000 }
       );
       navigate(`/verify-email?email=${encodeURIComponent(data.email)}`, { 

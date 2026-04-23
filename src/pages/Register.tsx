@@ -84,6 +84,16 @@ const Register = () => {
         t("register.success") || "Account created! Please check your email inbox for the verification code.",
         { duration: 8000 }
       );
+
+      // Persist for auto-login after OTP verification (survives refresh).
+      // Cleared after successful verification/login.
+      try {
+        sessionStorage.setItem("pending_verify_email", data.email);
+        sessionStorage.setItem("pending_verify_password", data.password);
+      } catch {
+        // ignore storage errors (private mode, etc.)
+      }
+
       navigate(`/verify-email?email=${encodeURIComponent(data.email)}`, { 
         state: { password: data.password } 
       });

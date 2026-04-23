@@ -16,7 +16,15 @@ const VerifyEmail = () => {
   const location = useLocation();
   const urlEmail = searchParams.get("email") || "";
   const urlToken = searchParams.get("token") || "";
-  const password = location.state?.password;
+  const statePassword = location.state?.password as string | undefined;
+  const storedEmail = (() => {
+    try { return sessionStorage.getItem("pending_verify_email") || ""; } catch { return ""; }
+  })();
+  const storedPassword = (() => {
+    try { return sessionStorage.getItem("pending_verify_password") || ""; } catch { return ""; }
+  })();
+  const password = statePassword || storedPassword || "";
+  const effectiveEmail = urlEmail || storedEmail || "";
   
   const [status, setStatus] = useState<"idle" | "verifying" | "sent" | "success" | "error">("idle");
   const [message, setMessage] = useState<string>("");
@@ -37,11 +45,17 @@ const VerifyEmail = () => {
         await authService.verifyEmail({ token: urlToken });
 
         // Optional: auto-login if password was passed from registration
-        if (password && urlEmail) {
+        if (password && effectiveEmail) {
           try {
-            await authService.login({ email: urlEmail, password });
+            await authService.login({ email: effectiveEmail, password });
             const user = await authService.fetchMe();
             toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
+            try {
+              sessionStorage.removeItem("pending_verify_email");
+              sessionStorage.removeItem("pending_verify_password");
+            } catch {
+              // ignore
+            }
             navigate(user.account_type === "PROVIDER" ? "/dashboard" : "/");
             return;
           } catch {
@@ -65,10 +79,10 @@ const VerifyEmail = () => {
     };
 
     verifyFromToken();
-  }, [navigate, password, t, urlEmail, urlToken]);
+  }, [effectiveEmail, navigate, password, t, urlToken]);
 
   const handleVerifyCode = async () => {
-    if (!urlEmail || !emailSchema.safeParse(urlEmail).success) {
+    if (!effectiveEmail || !emailSchema.safeParse(effectiveEmail).success) {
       toast.error(t("verifyEmail.enterValidEmail") || "Please enter a valid email.");
       return;
     }
@@ -80,14 +94,20 @@ const VerifyEmail = () => {
     setStatus("verifying");
     setMessage("");
     try {
-      await authService.verifyEmail({ email: urlEmail, code });
+      await authService.verifyEmail({ email: effectiveEmail, code });
 
       // Optional: auto-login if password was passed from registration
       if (password) {
         try {
-          await authService.login({ email: urlEmail, password });
+          await authService.login({ email: effectiveEmail, password });
           const user = await authService.fetchMe();
           toast.success(t("verifyEmail.successTitle") || "Email verified successfully!");
+          try {
+            sessionStorage.removeItem("pending_verify_email");
+            sessionStorage.removeItem("pending_verify_password");
+          } catch {
+            // ignore
+          }
           navigate(user.account_type === "PROVIDER" ? "/dashboard" : "/");
           return;
         } catch {
@@ -196,9 +216,9 @@ const VerifyEmail = () => {
                 </div>
               </div>
 
-              {urlEmail && (
+              {effectiveEmail && (
                 <div className="text-xs text-muted-foreground">
-                  {t("login.email")}: <span className="font-semibold text-foreground">{urlEmail}</span>
+                  {t("login.email")}: <span className="font-semibold text-foreground">{effectiveEmail}</span>
                 </div>
               )}
             </div>

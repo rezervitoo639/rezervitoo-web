@@ -14,11 +14,14 @@ const Privacy = () => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <h1 className="font-heading text-4xl font-bold mb-8">{t("privacy.title")}</h1>
             <div className="prose prose-sm md:prose-base max-w-none text-muted-foreground space-y-6">
-              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section1Title")}</h2><p>{t("privacy.section1")}</p></section>
-              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section2Title")}</h2><p>{t("privacy.section2")}</p></section>
-              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section3Title")}</h2><p>{t("privacy.section3")}</p></section>
-              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section4Title")}</h2><p>{t("privacy.section4")}</p></section>
-              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section5Title")}</h2><p>{t("privacy.section5")}</p></section>
+              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section1Title")}</h2><p className="whitespace-pre-wrap">{t("privacy.section1")}</p></section>
+              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section2Title")}</h2><p className="whitespace-pre-wrap">{t("privacy.section2")}</p></section>
+              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section3Title")}</h2><p className="whitespace-pre-wrap">{t("privacy.section3")}</p></section>
+              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section4Title")}</h2><p className="whitespace-pre-wrap">{t("privacy.section4")}</p></section>
+              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section5Title")}</h2><p className="whitespace-pre-wrap">{t("privacy.section5")}</p></section>
+              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section6Title")}</h2><p className="whitespace-pre-wrap">{t("privacy.section6")}</p></section>
+              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section7Title")}</h2><p className="whitespace-pre-wrap">{t("privacy.section7")}</p></section>
+              <section><h2 className="text-xl font-bold text-foreground">{t("privacy.section8Title")}</h2><p className="whitespace-pre-wrap">{t("privacy.section8")}</p></section>
             </div>
             <p className="mt-12 text-sm text-muted-foreground italic">{t("privacy.lastUpdated")}</p>
           </motion.div>

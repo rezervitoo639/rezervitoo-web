@@ -25,7 +25,10 @@ const Register = () => {
     const phoneSchema = z
       .string()
       .trim()
-      .regex(/^\d{10}$/, t("register.phoneInvalid") || "Phone number must be exactly 10 digits");
+      .refine(
+        (val) => /^\d{10}$/.test(val.replace(/[\s\-\.\(\)]/g, "")),
+        { message: t("register.phoneInvalid") || "Phone number must be exactly 10 digits." }
+      );
 
     const passwordSchema = z
       .string()
@@ -76,7 +79,7 @@ const Register = () => {
         password: data.password,
         first_name: data.firstName,
         last_name: data.lastName,
-        phone: data.phone,
+        phone: data.phone.replace(/[\s\-\.\(\)]/g, ""),
         account_type: accountType, // Using watched value for certainty
       };
 
@@ -170,7 +173,7 @@ const Register = () => {
             <h1 className="mt-4 font-heading text-2xl font-bold text-foreground">{t("register.createAccount")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{t("register.joinAs")}</p>
           </div>
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
             <input type="hidden" {...register("accountType")} />
             <div className="grid grid-cols-2 gap-3">
               {([
@@ -221,8 +224,7 @@ const Register = () => {
                 <input
                   type="tel"
                   inputMode="numeric"
-                  pattern="\\d*"
-                  maxLength={10}
+                  maxLength={15}
                   {...register("phone")}
                   placeholder="0123456789"
                   className="w-full rounded-xl border bg-background py-3 ps-11 pe-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
